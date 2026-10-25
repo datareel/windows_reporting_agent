@@ -54,8 +54,7 @@ HANDLE                  ghSvcStopEvent = NULL;
 
 
 void generate_boundary_seq_number(char *boundary, int length);
-int upload_agent_report(std::string &output);
-std::string GetTime30DaysAgoISO();
+int upload_agent_report(const AgentConfig &cfg, std::string &output);
 int get_all_patches(std::string &output);
 
 VOID SvcInstall(void);
@@ -258,10 +257,17 @@ VOID SvcInit( DWORD dwArgc, LPTSTR *lpszArgv)
        * Perform main service function here
        */
 
-      // Upload the report every 45 mintues
+      // Reload the settings each cycle so INI file edits take effect
+      // without restarting the service
       std::string output;
-      upload_agent_report(output);
-      std::string logfile_name = "C:\\windows_report_agent.log";
+      AgentConfig cfg;
+      LoadAgentConfig(cfg, output);
+
+      // Upload the report every report_interval_minutes
+      std::string report_output;
+      upload_agent_report(cfg, report_output);
+      output += report_output;
+      std::string logfile_name = cfg.log_file;
       
       HANDLE hFile = CreateFile(
 				logfile_name.c_str(),
@@ -294,16 +300,13 @@ VOID SvcInit( DWORD dwArgc, LPTSTR *lpszArgv)
 	  CloseHandle(hFile);
       }
 
-      // Sleep for 45 minutes, checking every 5 seconds to see if the serivce recieved a request to stop
-      for(i = 0; i < 540; i++) {
-	// 45 Minutes = 2700000 ms
-	// 1 minute = 60000 ms
-	//Sleep(60000);
-	
+      // Sleep for report_interval_minutes, checking every 5 seconds to see if the serivce recieved a request to stop
+      // 1 minute = 12 checks of 5000 ms
+      int wait_checks = cfg.report_interval_minutes * 12;
+      for(i = 0; i < wait_checks; i++) {
 	// Use a timed wait instead of Sleep(5000)
         // This ensures the thread stops IMMEDIATELY when requested
         if (WaitForSingleObject(ghSvcStopEvent, 5000) == WAIT_OBJECT_0) {
-	  // 5000 ms * 540 = 2700000 ms for the 45 minuite wait
 	  ReportSvcStatus( SERVICE_STOPPED, NO_ERROR, 0 );
 	  break; 
         }
@@ -438,12 +441,8 @@ VOID SvcReportEvent(LPTSTR szFunction)
 // Error-handling helper function
 
 
-int upload_agent_report(std::string &output) {
+int upload_agent_report(const AgentConfig &cfg, std::string &output) {
 
-  output.clear();
-  
-  std::string server = "reports.example.com";
-  std::string path ="/windows/upload/upload.php";
   std::string input_fname, upload_fname, outbuf;
   std::string output_str;
   std::string HOSTNAME;
@@ -462,8 +461,7 @@ int upload_agent_report(std::string &output) {
   }
 
   upload_fname = HOSTNAME + "_windows_report_agent.txt";
-  input_fname = "C:\\";
-  input_fname += HOSTNAME + "_windows_report_agent.txt";
+  input_fname = JoinPath(cfg.report_dir, upload_fname);
   
   HANDLE hFile = CreateFile(
 			    input_fname.c_str(),
@@ -482,7 +480,7 @@ int upload_agent_report(std::string &output) {
   }
 
   std::string report_data = "Windows report agent from host " + HOSTNAME + "\n";
-  report_data += "VERSION: 3.2\n";
+  report_data += "VERSION: " AGENT_VERSION "\n";
   report_data += "HOSTNAME: " + HOSTNAME + "\n";
   std::time_t time_result = std::time(nullptr);
   std::string EPTIME = std::to_string(time_result);
@@ -511,7 +509,7 @@ int upload_agent_report(std::string &output) {
   report_data += "\n";
   
   DIR.clear();
-  DIR = "C:\\Users\\*"; // Note the trailing '*' wildcard  
+  DIR = JoinPath(cfg.users_dir, "*"); // Note the trailing '*' wildcard
   list_dirs(DIR, sbuf);
   report_data += "USERS:\n";
   report_data += sbuf;
@@ -526,7 +524,7 @@ int upload_agent_report(std::string &output) {
   
   // Windows defender alerts
   report_data += "WINDOWS DEFENDER ALERTS:\n";
-  get_windows_defender_alerts(sbuf);
+  get_windows_defender_alerts(sbuf, cfg.event_lookback_days);
   report_data += sbuf;
   report_data += "END WINDOWS DEFENDER ALERTS\n";
   report_data += "\n";
@@ -566,7 +564,7 @@ int upload_agent_report(std::string &output) {
 
   CloseHandle(hFile);
   
-  int error_level = UploadFile(server, path, input_fname, upload_fname, output_str);
+  int error_level = UploadFile(cfg, input_fname, upload_fname, output_str);
 
   if(error_level != 0) {
     output += "ERROR - Uploadfile() function reported errors\n";

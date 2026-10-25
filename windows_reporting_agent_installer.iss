@@ -21,6 +21,8 @@ Source: "list_all_patches.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "list_defender_alerts.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "get_ip_address.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "get_service_tag.exe"; DestDir: "{app}"; Flags: ignoreversion
+; Keep an edited INI file on upgrade and uninstall
+Source: "windows_reporting_agent.ini"; DestDir: "{app}"; Flags: onlyifdoesntexist uninsneveruninstall
 
 [Run]
 ; Install the service using sc.exe

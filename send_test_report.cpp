@@ -44,19 +44,22 @@ HANDLE                  ghSvcStopEvent = NULL;
 
 
 void generate_boundary_seq_number(char *boundary, int length);
-int upload_agent_report(std::string &output);
-std::string GetTime30DaysAgoISO();
+int upload_agent_report(const AgentConfig &cfg, std::string &output);
   
 int main()
 {
   std::string output;
+  AgentConfig cfg;
+  LoadAgentConfig(cfg, output);
 
-  std::cout << "Uploading single report\n";
+  std::cout << "Uploading single report to " << cfg.server_host << ":" << cfg.server_port << cfg.upload_path << "\n";
   
   // Upload a single report 
-  upload_agent_report(output);
+  std::string report_output;
+  upload_agent_report(cfg, report_output);
+  output += report_output;
 
-  std::string logfile_name = "C:\\windows_report_agent.log";
+  std::string logfile_name = cfg.log_file;
   HANDLE hFile = CreateFile(
 			    logfile_name.c_str(),
 			    GENERIC_WRITE,           // Desired access
@@ -101,12 +104,8 @@ int main()
 // Error-handling helper function
 
 
-int upload_agent_report(std::string &output) {
+int upload_agent_report(const AgentConfig &cfg, std::string &output) {
 
-  output.clear();
-  
-  std::string server = "reports.example.com";
-  std::string path ="/windows/upload/upload.php";
   std::string input_fname, upload_fname, outbuf;
   std::string output_str;
   std::string HOSTNAME;
@@ -125,8 +124,7 @@ int upload_agent_report(std::string &output) {
   }
 
   upload_fname = HOSTNAME + "_windows_report_agent.txt";
-  input_fname = "C:\\";
-  input_fname += HOSTNAME + "_windows_report_agent.txt";
+  input_fname = JoinPath(cfg.report_dir, upload_fname);
   
   HANDLE hFile = CreateFile(
 			    input_fname.c_str(),
@@ -145,7 +143,7 @@ int upload_agent_report(std::string &output) {
   }
 
   std::string report_data = "Windows report agent from host " + HOSTNAME + "\n";
-  report_data += "VERSION: 3.2\n";
+  report_data += "VERSION: " AGENT_VERSION "\n";
   report_data += "HOSTNAME: " + HOSTNAME + "\n";
   std::time_t time_result = std::time(nullptr);
   std::string EPTIME = std::to_string(time_result);
@@ -174,7 +172,7 @@ int upload_agent_report(std::string &output) {
   report_data += "\n";
 
   DIR.clear();
-  DIR = "C:\\Users\\*"; // Note the trailing '*' wildcard  
+  DIR = JoinPath(cfg.users_dir, "*"); // Note the trailing '*' wildcard
   list_dirs(DIR, sbuf);
   report_data += "USERS:\n";
   report_data += sbuf;
@@ -189,7 +187,7 @@ int upload_agent_report(std::string &output) {
   
   // Windows defender alerts
   report_data += "WINDOWS DEFENDER ALERTS:\n";
-  get_windows_defender_alerts(sbuf);
+  get_windows_defender_alerts(sbuf, cfg.event_lookback_days);
   report_data += sbuf;
   report_data += "END WINDOWS DEFENDER ALERTS\n";
   report_data += "\n";
@@ -212,7 +210,7 @@ int upload_agent_report(std::string &output) {
 
   CloseHandle(hFile);
   
-  int error_level = UploadFile(server, path, input_fname, upload_fname, output_str);
+  int error_level = UploadFile(cfg, input_fname, upload_fname, output_str);
 
   if(error_level != 0) {
     output += "ERROR - Uploadfile() function reported errors\n";

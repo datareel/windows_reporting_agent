@@ -129,32 +129,117 @@ void generate_boundary_seq_number(char *boundary, int length)
     }
 }
 
-int UploadFile(const std::string& server, const std::string& path, const std::string& input_fname, const std::string& upload_fname, std::string& output_str)
+void SetDefaultAgentConfig(AgentConfig &cfg)
+{
+  cfg.server_host = "reports.example.com";
+  cfg.server_port = INTERNET_DEFAULT_HTTPS_PORT;
+  cfg.upload_path = "/windows/upload/upload.php";
+  cfg.use_https = true;
+  cfg.ignore_cert_revocation = true;
+  cfg.report_interval_minutes = 45;
+  cfg.report_dir = "C:\\";
+  cfg.log_file = "C:\\windows_report_agent.log";
+  cfg.users_dir = "C:\\Users";
+  cfg.event_lookback_days = 30;
+  cfg.ini_path.clear();
+}
+
+static std::string ReadIniString(const char *section, const char *key, const std::string &default_value, const std::string &ini_path)
+{
+  char buffer[1024];
+  GetPrivateProfileStringA(section, key, default_value.c_str(), buffer, sizeof(buffer), ini_path.c_str());
+  return std::string(buffer);
+}
+
+static int ReadIniInt(const char *section, const char *key, int default_value, const std::string &ini_path)
+{
+  return (int)GetPrivateProfileIntA(section, key, default_value, ini_path.c_str());
+}
+
+int LoadAgentConfig(AgentConfig &cfg, std::string &output)
+{
+  SetDefaultAgentConfig(cfg);
+
+  // Look for the INI file in the same directory as the executable
+  char exe_path[MAX_PATH];
+  DWORD len = GetModuleFileNameA(NULL, exe_path, MAX_PATH);
+  if(len == 0 || len >= MAX_PATH) {
+    output += "WARNING - Could not get executable path, using default settings\n";
+    return 1;
+  }
+  std::string ini_path = exe_path;
+  size_t pos = ini_path.find_last_of("\\/");
+  ini_path = (pos == std::string::npos) ? AGENT_INI_FILE : ini_path.substr(0, pos + 1) + AGENT_INI_FILE;
+  cfg.ini_path = ini_path;
+
+  if(GetFileAttributesA(ini_path.c_str()) == INVALID_FILE_ATTRIBUTES) {
+    output += "WARNING - Config file " + ini_path + " not found, using default settings\n";
+    return 1;
+  }
+
+  cfg.server_host = ReadIniString("server", "host", cfg.server_host, ini_path);
+  cfg.use_https = ReadIniInt("server", "use_https", cfg.use_https ? 1 : 0, ini_path) != 0;
+  if(!cfg.use_https) cfg.server_port = INTERNET_DEFAULT_HTTP_PORT;
+  cfg.server_port = ReadIniInt("server", "port", cfg.server_port, ini_path);
+  cfg.upload_path = ReadIniString("server", "upload_path", cfg.upload_path, ini_path);
+  cfg.ignore_cert_revocation = ReadIniInt("server", "ignore_cert_revocation", cfg.ignore_cert_revocation ? 1 : 0, ini_path) != 0;
+
+  cfg.report_interval_minutes = ReadIniInt("agent", "report_interval_minutes", cfg.report_interval_minutes, ini_path);
+  cfg.report_dir = ReadIniString("agent", "report_dir", cfg.report_dir, ini_path);
+  cfg.log_file = ReadIniString("agent", "log_file", cfg.log_file, ini_path);
+  cfg.users_dir = ReadIniString("agent", "users_dir", cfg.users_dir, ini_path);
+  cfg.event_lookback_days = ReadIniInt("agent", "event_lookback_days", cfg.event_lookback_days, ini_path);
+
+  // Keep values in a usable range
+  if(cfg.server_port <= 0 || cfg.server_port > 65535) {
+    output += "WARNING - Invalid port in " + ini_path + ", using default\n";
+    cfg.server_port = cfg.use_https ? INTERNET_DEFAULT_HTTPS_PORT : INTERNET_DEFAULT_HTTP_PORT;
+  }
+  if(cfg.report_interval_minutes < 1) cfg.report_interval_minutes = 1;
+  if(cfg.event_lookback_days < 1) cfg.event_lookback_days = 1;
+  if(cfg.upload_path.empty() || cfg.upload_path[0] != '/') cfg.upload_path = "/" + cfg.upload_path;
+
+  output += "Loaded settings from " + ini_path + "\n";
+  return 0;
+}
+
+std::string JoinPath(const std::string &dir, const std::string &name)
+{
+  if(dir.empty()) return name;
+  char last = dir[dir.length() - 1];
+  if(last == '\\' || last == '/') return dir + name;
+  return dir + "\\" + name;
+}
+
+int UploadFile(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str)
 {
   int error_level = 0;
   
   // 1. Initialize WinINet
-  HINTERNET hSession = InternetOpen("WindowsReportAgent/3.2", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+  std::string user_agent = "WindowsReportAgent/" AGENT_VERSION;
+  HINTERNET hSession = InternetOpen(user_agent.c_str(), INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
   if (!hSession) {
     output_str = "ERROR - Could not initialize WinINet session"; 
     return -1;
   }
   
   // 2. Connect to the server
-  HINTERNET hConnect = InternetConnect(hSession, server.c_str(), INTERNET_DEFAULT_HTTPS_PORT, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
+  HINTERNET hConnect = InternetConnect(hSession, cfg.server_host.c_str(), (INTERNET_PORT)cfg.server_port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
   if (!hConnect) {
     InternetCloseHandle(hSession);
-    output_str = "ERROR - Could not connect to server " + server; 
+    output_str = "ERROR - Could not connect to server " + cfg.server_host; 
     return -1;
   }
   
   // 3. Create the request
   const char* acceptTypes[] = { "*/*", NULL };
-  HINTERNET hRequest = HttpOpenRequest(hConnect, "POST", path.c_str(), TEXT("HTTP/1.1"), NULL, acceptTypes, INTERNET_FLAG_SECURE, 0);
+  DWORD request_flags = cfg.use_https ? INTERNET_FLAG_SECURE : 0;
+  HINTERNET hRequest = HttpOpenRequest(hConnect, "POST", cfg.upload_path.c_str(), TEXT("HTTP/1.1"), NULL, acceptTypes, request_flags, 0);
 
   // 06/04/2026: Fix for error code: 12057 cannot validate the SSL/TLS certificate's revocation status.
   // This is usually caused by network security settings or blocked access to a Certificate Revocation List (CRL) server.
-  if (hRequest) {
+  // Set ignore_cert_revocation = 0 in the INI file to enforce revocation checks.
+  if (hRequest && cfg.use_https && cfg.ignore_cert_revocation) {
     DWORD dwFlags;
     DWORD dwBuffLen = sizeof(dwFlags);
     
@@ -409,21 +494,21 @@ int get_hotfixes(std::string &output)
     return 0;
 }
 
-std::string GetTime30DaysAgoISO()
+std::string GetTimeDaysAgoISO(int days)
 {
   // Helper function to convert system time to ISO 8601 string for XPath
   SYSTEMTIME st;
   GetSystemTime(&st);
   
-  // Subtract 30 days
+  // Subtract the number of days
   FILETIME ft, localFt;
   SystemTimeToFileTime(&st, &ft);
   ULARGE_INTEGER uli;
   uli.LowPart = ft.dwLowDateTime;
   uli.HighPart = ft.dwHighDateTime;
   
-  // 30 days * 24 hours * 60 min * 60 sec * 10^7 (nanoseconds in intervals of 100ns)
-  uli.QuadPart -= (ULONGLONG)30 * 24 * 60 * 60 * 10000000;
+  // days * 24 hours * 60 min * 60 sec * 10^7 (nanoseconds in intervals of 100ns)
+  uli.QuadPart -= (ULONGLONG)days * 24 * 60 * 60 * 10000000;
   
   ft.dwLowDateTime = uli.LowPart;
   ft.dwHighDateTime = uli.HighPart;
@@ -437,7 +522,7 @@ std::string GetTime30DaysAgoISO()
 
 int QueryRecentEvents(const std::wstring &channel, const std::wstring query, std::string &output)
 {
-  // std::string timeFilter = GetTime30DaysAgoISO();
+  // std::string timeFilter = GetTimeDaysAgoISO(30);
   // std::wstring channel = L"Microsoft-Windows-Windows Defender/Operational";
   
   // Level 1: Critical
@@ -500,9 +585,9 @@ int QueryRecentEvents(const std::wstring &channel, const std::wstring query, std
   return error_level;
 }
 
-int get_windows_defender_alerts(std::string &output)
+int get_windows_defender_alerts(std::string &output, int days)
 {
-  std::string timeFilter = GetTime30DaysAgoISO();
+  std::string timeFilter = GetTimeDaysAgoISO(days);
   std::wstring channel = L"Microsoft-Windows-Windows Defender/Operational";
   
   // Level 1: Critical
