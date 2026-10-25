@@ -30,7 +30,12 @@ function wra_config() {
         ),
     );
 
+    // Set with "SetEnv WRA_SERVER_INI /path/server.ini" in the web server.
+    // Some PHP handlers only pass it through $_SERVER.
     $ini_path = getenv('WRA_SERVER_INI');
+    if (($ini_path === false || $ini_path === '') && isset($_SERVER['WRA_SERVER_INI'])) {
+        $ini_path = $_SERVER['WRA_SERVER_INI'];
+    }
     if ($ini_path === false || $ini_path === '') {
         $ini_path = '/etc/windows_reporting_agent/server.ini';
     }
