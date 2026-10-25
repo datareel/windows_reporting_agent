@@ -31,3 +31,6 @@
 
 # Debug file
 core.*
+
+# Installer output
+output/

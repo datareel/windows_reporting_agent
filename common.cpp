@@ -168,8 +168,8 @@ void SetDefaultAgentConfig(AgentConfig &cfg)
   cfg.scp_host_key_check = "yes";
   cfg.scp_timeout_seconds = 120;
   cfg.report_interval_minutes = 45;
-  cfg.report_dir = "C:\\";
-  cfg.log_file = "C:\\windows_report_agent.log";
+  cfg.report_dir = "C:\\ProgramData\\WindowsReportAgent";
+  cfg.log_file = "C:\\ProgramData\\WindowsReportAgent\\windows_report_agent.log";
   cfg.users_dir = "C:\\Users";
   cfg.event_lookback_days = 30;
   cfg.data_dir = "C:\\ProgramData\\WindowsReportAgent";
@@ -292,6 +292,11 @@ int LoadAgentConfig(AgentConfig &cfg, std::string &output)
   if(cfg.register_path.empty() || cfg.register_path[0] != '/') cfg.register_path = "/" + cfg.register_path;
 
   output += "Loaded settings from " + ini_path + "\n";
+
+  // The report is written to report_dir before it is delivered
+  if(!CreateDirTree(cfg.report_dir)) {
+    output += "WARNING - Could not create report directory " + cfg.report_dir + "\n";
+  }
   return 0;
 }
 

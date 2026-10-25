@@ -84,7 +84,7 @@ std::string RandomHex(int nbytes)
 }
 
 // Create a directory and any missing parent directories
-static bool CreateDirTree(const std::string &dir)
+bool CreateDirTree(const std::string &dir)
 {
   if(dir.empty()) return false;
   if(GetFileAttributesA(dir.c_str()) != INVALID_FILE_ATTRIBUTES) return true;

@@ -59,6 +59,13 @@ windows_reporting_agent.res: windows_reporting_agent.rc
 windows_reporting_agent.dll: windows_reporting_agent.res
 	link /nologo -dll -noentry -out:windows_reporting_agent.dll windows_reporting_agent.res
 
+# Windows setup.exe in output\ (needs Inno Setup 6)
+ISCC = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+
+installer: all
+	$(ISCC) /Qp windows_reporting_agent_installer.iss
+
 clean:
 	-del /q *.exe *.obj *.bin 2>nul
 	-del /q windows_reporting_agent.dll windows_reporting_agent.res windows_reporting_agent.rc 2>nul
+	-rmdir /s /q output 2>nul

@@ -30,6 +30,7 @@ struct AgentIdentity {
 typedef std::vector<std::pair<std::string, std::string> > FormFields;
 
 std::string GetAgentHostname();
+bool CreateDirTree(const std::string &dir);
 std::string Sha256Hex(const std::string &data);
 std::string RandomHex(int nbytes);
 int LoadOrCreateAgentIdentity(const AgentConfig &cfg, AgentIdentity &id, std::string &output);
