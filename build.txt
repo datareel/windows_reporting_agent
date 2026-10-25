@@ -1,0 +1,36 @@
+Set the C/C++ env for VS 2026 community edition:
+
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Auxiliary\Build\vcvars32.bat"
+
+Build the programs:
+
+cl /EHsc windows_reporting_agent_svc.cpp common.cpp
+cl /EHsc send_test_report.cpp common.cpp
+cl svcconfig.cpp
+cl svccontrol.cpp
+cl /EHsc list_all_apps.cpp
+cl /EHsc list_all_patches.cpp
+cl /EHsc list_defender_alerts.cpp
+
+Build the message DLL
+
+mc -U windows_reporting_agent.mc
+rc -r windows_reporting_agent.rc
+link -dll -noentry -out:windows_reporting_agent.dll windows_reporting_agent.res
+
+Add the registry keys:
+
+reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\EventLog\Application\WindowsReportAgent
+reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\EventLog\Application\WindowsReportAgent /v EventMessageFile /t REG_SZ /d windows_reporting_agent.dll
+reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\EventLog\Application\WindowsReportAgent /v TypesSupported /t REG_DWORD /d 0x00000007
+
+As Administrator:
+
+Run the following command to install the service, test and uninstall:
+
+windows_reporting_agent_svc.exe install
+
+svccontrol start WindowsReportAgent
+
+svcconfig delete WindowsReportAgent
+
