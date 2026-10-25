@@ -18,6 +18,8 @@ struct AgentConfig {
     std::string server_host;        // host
     int server_port;                // port
     std::string upload_path;        // upload_path
+    std::string register_path;      // register_path
+    std::string enrollment_token;   // enrollment_token
     bool use_https;                 // use_https
     bool ignore_cert_revocation;    // ignore_cert_revocation
     // [cifs]
@@ -38,6 +40,7 @@ struct AgentConfig {
     std::string log_file;           // log_file
     std::string users_dir;          // users_dir
     int event_lookback_days;        // event_lookback_days
+    std::string data_dir;           // data_dir: agent certificate and registration state
     // Full path of the INI file that was read
     std::string ini_path;
 };

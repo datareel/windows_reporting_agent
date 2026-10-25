@@ -1,0 +1,38 @@
+; Windows Reporting Agent server settings
+;
+; Copy to /etc/windows_reporting_agent/server.ini, or set the
+; WRA_SERVER_INI environment variable in the web server to another path.
+; Keep this file outside the web root: it holds the enrollment token.
+;
+;   Apache: SetEnv WRA_SERVER_INI /path/to/server.ini
+
+[paths]
+; Where accepted reports are written, one file per host
+; (<hostname>_windows_report_agent.txt). bash/run_windows_laptop_inventory.sh
+; reads this directory.
+reports_dir = /var/www/html/windows/reports
+; Agent registrations and replay protection data. Must be writable by the
+; web server user and should be outside the web root.
+data_dir = /var/lib/windows_reporting_agent
+
+[registration]
+; Shared secret that agents send when they register (enrollment_token in
+; the agent INI file). Leave empty to require an admin to approve every
+; agent on admin.php.
+enrollment_token =
+; 1 = approve an agent automatically when its enrollment token matches
+; 0 = the token is still checked, but an admin must approve the agent
+auto_approve_with_token = 1
+
+[upload]
+; Largest report accepted, in bytes
+max_upload_bytes = 2000000
+; Largest difference allowed between the agent clock and the server
+; clock, in seconds. Signed requests outside this window are rejected.
+max_clock_skew_seconds = 300
+
+[admin]
+; 1 = admin.php only runs behind web server authentication (it needs
+; REMOTE_USER, for example from Apache AuthType Basic). Only set this to 0
+; if access to admin.php is restricted some other way.
+require_remote_user = 1

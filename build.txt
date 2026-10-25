@@ -4,8 +4,8 @@ C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Auxiliary\Build\vcvars32
 
 Build the programs:
 
-cl /EHsc windows_reporting_agent_svc.cpp common.cpp
-cl /EHsc send_test_report.cpp common.cpp
+cl /EHsc windows_reporting_agent_svc.cpp common.cpp agent_auth.cpp
+cl /EHsc send_test_report.cpp common.cpp agent_auth.cpp
 cl svcconfig.cpp
 cl svccontrol.cpp
 cl /EHsc list_all_apps.cpp

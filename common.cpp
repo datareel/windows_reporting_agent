@@ -51,6 +51,7 @@
 #pragma comment(lib, "comsuppw.lib")
 
 #include "common.h"
+#include "agent_auth.h"
 
 std::string GetLastErrorAsString()
 {
@@ -152,6 +153,8 @@ void SetDefaultAgentConfig(AgentConfig &cfg)
   cfg.server_host = "reports.example.com";
   cfg.server_port = INTERNET_DEFAULT_HTTPS_PORT;
   cfg.upload_path = "/windows/upload/upload.php";
+  cfg.register_path = "/windows/upload/register.php";
+  cfg.enrollment_token.clear();
   cfg.use_https = true;
   cfg.ignore_cert_revocation = true;
   cfg.cifs_share.clear();
@@ -169,6 +172,7 @@ void SetDefaultAgentConfig(AgentConfig &cfg)
   cfg.log_file = "C:\\windows_report_agent.log";
   cfg.users_dir = "C:\\Users";
   cfg.event_lookback_days = 30;
+  cfg.data_dir = "C:\\ProgramData\\WindowsReportAgent";
   cfg.ini_path.clear();
 }
 
@@ -248,6 +252,8 @@ int LoadAgentConfig(AgentConfig &cfg, std::string &output)
   if(!cfg.use_https) cfg.server_port = INTERNET_DEFAULT_HTTP_PORT;
   cfg.server_port = ReadIniInt("https", "port", cfg.server_port, ini_path);
   cfg.upload_path = ReadIniString("https", "upload_path", cfg.upload_path, ini_path);
+  cfg.register_path = ReadIniString("https", "register_path", cfg.register_path, ini_path);
+  cfg.enrollment_token = ReadIniString("https", "enrollment_token", cfg.enrollment_token, ini_path);
   cfg.ignore_cert_revocation = ReadIniInt("https", "ignore_cert_revocation", cfg.ignore_cert_revocation ? 1 : 0, ini_path) != 0;
 
   cfg.cifs_share = ReadIniString("cifs", "share", cfg.cifs_share, ini_path);
@@ -267,6 +273,7 @@ int LoadAgentConfig(AgentConfig &cfg, std::string &output)
   cfg.log_file = ReadIniString("agent", "log_file", cfg.log_file, ini_path);
   cfg.users_dir = ReadIniString("agent", "users_dir", cfg.users_dir, ini_path);
   cfg.event_lookback_days = ReadIniInt("agent", "event_lookback_days", cfg.event_lookback_days, ini_path);
+  cfg.data_dir = ReadIniString("agent", "data_dir", cfg.data_dir, ini_path);
 
   // Keep values in a usable range
   if(cfg.server_port <= 0 || cfg.server_port > 65535) {
@@ -282,6 +289,7 @@ int LoadAgentConfig(AgentConfig &cfg, std::string &output)
   if(cfg.report_interval_minutes < 1) cfg.report_interval_minutes = 1;
   if(cfg.event_lookback_days < 1) cfg.event_lookback_days = 1;
   if(cfg.upload_path.empty() || cfg.upload_path[0] != '/') cfg.upload_path = "/" + cfg.upload_path;
+  if(cfg.register_path.empty() || cfg.register_path[0] != '/') cfg.register_path = "/" + cfg.register_path;
 
   output += "Loaded settings from " + ini_path + "\n";
   return 0;
@@ -486,112 +494,82 @@ int ScpFile(const AgentConfig &cfg, const std::string& input_fname, const std::s
 
 int UploadFile(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str)
 {
-  int error_level = 0;
-  
-  // 1. Initialize WinINet
-  std::string user_agent = "WindowsReportAgent/" AGENT_VERSION;
-  HINTERNET hSession = InternetOpen(user_agent.c_str(), INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
-  if (!hSession) {
-    output_str = "ERROR - Could not initialize WinINet session"; 
-    return -1;
-  }
-  
-  // 2. Connect to the server
-  HINTERNET hConnect = InternetConnect(hSession, cfg.server_host.c_str(), (INTERNET_PORT)cfg.server_port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
-  if (!hConnect) {
-    InternetCloseHandle(hSession);
-    output_str = "ERROR - Could not connect to server " + cfg.server_host; 
-    return -1;
-  }
-  
-  // 3. Create the request
-  const char* acceptTypes[] = { "*/*", NULL };
-  DWORD request_flags = cfg.use_https ? INTERNET_FLAG_SECURE : 0;
-  HINTERNET hRequest = HttpOpenRequest(hConnect, "POST", cfg.upload_path.c_str(), TEXT("HTTP/1.1"), NULL, acceptTypes, request_flags, 0);
+  output_str.clear();
 
-  // 06/04/2026: Fix for error code: 12057 cannot validate the SSL/TLS certificate's revocation status.
-  // This is usually caused by network security settings or blocked access to a Certificate Revocation List (CRL) server.
-  // Set ignore_cert_revocation = 0 in the INI file to enforce revocation checks.
-  if (hRequest && cfg.use_https && cfg.ignore_cert_revocation) {
-    DWORD dwFlags;
-    DWORD dwBuffLen = sizeof(dwFlags);
-    
-    // 1. Retrieve the current security flags
-    InternetQueryOption(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, &dwBuffLen);
-    
-    // 2. Add the flag to ignore revocation failures
-    dwFlags |= SECURITY_FLAG_IGNORE_REVOCATION;
-    
-    // 3. Set the updated security flags back to the request handle
-    InternetSetOption(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
-    
-    // Now call HttpSendRequest(hRequest, ...);
+  std::string file_content;
+  HANDLE hFile = CreateFileA(input_fname.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+  if(hFile == INVALID_HANDLE_VALUE) {
+    output_str = "ERROR - Cannot open " + input_fname;
+    return -1;
   }
-  
-  // 4. Construct Multipart/Form-Data body
-  char boundary[32];
-  generate_boundary_seq_number(boundary, 31);
-  std::string boundary_seq = boundary;
-  std::string boundary_sep = "------------------------";
-  std::string headers = "Content-Type: multipart/form-data; boundary=" + boundary_sep + boundary_seq;
-  
-  // Form data headers for the file
-  std::string bodyStart = "--" + boundary_sep + boundary_seq + "\r\n"
-    "Content-Disposition: form-data; name=\"uploadedFile\"; filename=\"" + upload_fname + "\"\r\n"
-    "Content-Type: text/plain\r\n\r\n";
-  
-  // This is the content of the file being uploaded
-  HANDLE hfile;
-  std::string fileContent = "No file content\r\n";
-  hfile=CreateFile(input_fname.c_str(),GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,0,NULL);
-  if(hfile != INVALID_HANDLE_VALUE){
-    DWORD filesize, bufsize, bytesread;
-    filesize=GetFileSize(hfile,NULL);
-    bufsize = filesize + 32;
-    LPBYTE pbuf=(LPBYTE)malloc(bufsize);
-    memset(pbuf, 0, bufsize); 
-    ReadFile(hfile,pbuf,filesize,&bytesread,NULL);
-    fileContent = (char *)pbuf;
-    CloseHandle(hfile);
-    free(pbuf);
+  char buffer[4096];
+  DWORD bytesRead = 0;
+  while(ReadFile(hFile, buffer, sizeof(buffer), &bytesRead, NULL) && bytesRead > 0) {
+    file_content.append(buffer, bytesRead);
   }
-  else {
-    error_level = -1;
-    std::string fileContent = "ERROR - Cannot open " + input_fname + "\r\n";
-    output_str = "ERROR - - Cannot open " + input_fname;
+  CloseHandle(hFile);
+
+  AgentIdentity id;
+  if(LoadOrCreateAgentIdentity(cfg, id, output_str) != 0) {
+    return -1;
   }
-  
-  std::string submit = "\r\n--" + boundary_sep + boundary_seq + "\r\n"
-    "Content-Disposition: form-data; name=\"submit\"\r\n\r\nUpload File";
-  
-  std::string bodyEnd = "\r\n--" + boundary_sep + boundary_seq + "--\r\n";
-  
-  // Combine into final data buffer
-  std::string fullBody = bodyStart + fileContent + submit + bodyEnd;
-  
-  // 5. Send the request
-  BOOL sent = HttpSendRequest(hRequest, headers.c_str(), headers.length(), (LPVOID)fullBody.c_str(), fullBody.length());
-  
-  if (sent) {
-    output_str = "Upload successful\r\n";
-    char buffer[1024];
-    DWORD bytesRead;
-    while (InternetReadFile(hRequest, buffer, sizeof(buffer) - 1, &bytesRead) && bytesRead > 0) {
-      buffer[bytesRead] = '\0';
-      output_str += buffer;
+
+  // Register the agent certificate before sending anything. The server
+  // must approve it, either by an admin or with the enrollment token.
+  std::string approved_state = "approved " + id.key_fingerprint;
+  if(ReadRegistrationState(cfg) != approved_state) {
+    std::string status;
+    if(RegisterAgent(cfg, id, status, output_str) != 0) {
+      FreeAgentIdentity(id);
+      return -1;
     }
-    
-  } else {
-    output_str = "ERROR - Upload failed. Error message: " + GetLastErrorAsString();
-    error_level = -1;
+    if(status != "approved") {
+      WriteRegistrationState(cfg, status + " " + id.key_fingerprint);
+      output_str += "ERROR - Report not sent, this agent is " + status + " on the server. "
+	"Approve host " + id.hostname + " with key fingerprint " + id.key_fingerprint + " on the admin page";
+      FreeAgentIdentity(id);
+      return -1;
+    }
+    WriteRegistrationState(cfg, approved_state);
   }
-  
-  // Clean up
-  InternetCloseHandle(hRequest);
-  InternetCloseHandle(hConnect);
-  InternetCloseHandle(hSession);
 
-  return error_level;
+  // Sign the upload: hostname, time, a one time nonce and the report hash
+  std::string timestamp = std::to_string((long long)std::time(nullptr));
+  std::string nonce = RandomHex(16);
+  std::string to_sign = "upload\n" + id.hostname + "\n" + timestamp + "\n" + nonce + "\n" + Sha256Hex(file_content);
+  std::string signature;
+  if(SignString(id, to_sign, signature, output_str) != 0) {
+    FreeAgentIdentity(id);
+    return -1;
+  }
+  std::string hostname = id.hostname;
+  FreeAgentIdentity(id);
+
+  FormFields fields;
+  fields.push_back(std::make_pair("hostname", hostname));
+  fields.push_back(std::make_pair("timestamp", timestamp));
+  fields.push_back(std::make_pair("nonce", nonce));
+  fields.push_back(std::make_pair("signature", signature));
+
+  DWORD http_status = 0;
+  std::string response, error;
+  if(HttpPostMultipart(cfg, cfg.upload_path, fields, "uploadedFile", upload_fname, file_content, http_status, response, error) != 0) {
+    output_str += error;
+    return -1;
+  }
+
+  std::string status = ParseStatus(response);
+  if(http_status == 200 && status == "ok") {
+    output_str += "Upload successful\n" + response;
+    return 0;
+  }
+
+  // The server no longer accepts this agent, so register again next cycle
+  if(status == "not_registered" || status == "pending" || status == "revoked" || status == "key_mismatch") {
+    WriteRegistrationState(cfg, "");
+  }
+  output_str += "ERROR - Upload rejected (HTTP " + std::to_string(http_status) + "): " + response;
+  return -1;
 }
 
 std::string WStringToString(const std::wstring& wstr)

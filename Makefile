@@ -16,14 +16,17 @@ PROGS = windows_reporting_agent_svc.exe \
 
 all: $(PROGS) windows_reporting_agent.dll
 
-common.obj: common.cpp common.h
+common.obj: common.cpp common.h agent_auth.h
 	cl $(CXXFLAGS) /c common.cpp
 
-windows_reporting_agent_svc.exe: windows_reporting_agent_svc.cpp windows_reporting_agent.h common.h common.obj
-	cl $(CXXFLAGS) windows_reporting_agent_svc.cpp common.obj
+agent_auth.obj: agent_auth.cpp agent_auth.h common.h
+	cl $(CXXFLAGS) /c agent_auth.cpp
 
-send_test_report.exe: send_test_report.cpp common.h common.obj
-	cl $(CXXFLAGS) send_test_report.cpp common.obj
+windows_reporting_agent_svc.exe: windows_reporting_agent_svc.cpp windows_reporting_agent.h common.h common.obj agent_auth.obj
+	cl $(CXXFLAGS) windows_reporting_agent_svc.cpp common.obj agent_auth.obj
+
+send_test_report.exe: send_test_report.cpp common.h common.obj agent_auth.obj
+	cl $(CXXFLAGS) send_test_report.cpp common.obj agent_auth.obj
 
 svcconfig.exe: svcconfig.cpp
 	cl $(CFLAGS) svcconfig.cpp
