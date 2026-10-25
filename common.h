@@ -4,6 +4,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <string>
+#include <vector>
 
 #define AGENT_VERSION "3.2"
 #define AGENT_INI_FILE "windows_reporting_agent.ini"
@@ -11,12 +12,26 @@
 // Agent settings, loaded from AGENT_INI_FILE in the same directory as the
 // executable. Any setting missing from the INI file keeps its default.
 struct AgentConfig {
-    // [server]
+    // [delivery]
+    std::vector<std::string> delivery_methods; // methods: https, cifs, scp
+    // [https]
     std::string server_host;        // host
     int server_port;                // port
     std::string upload_path;        // upload_path
     bool use_https;                 // use_https
     bool ignore_cert_revocation;    // ignore_cert_revocation
+    // [cifs]
+    std::string cifs_share;         // share
+    // [scp]
+    std::string scp_host;           // host
+    int scp_port;                   // port
+    std::string scp_user;           // user
+    std::string scp_key_file;       // key_file
+    std::string scp_remote_dir;     // remote_dir
+    std::string scp_path;           // scp_path
+    std::string scp_known_hosts;    // known_hosts_file
+    std::string scp_host_key_check; // strict_host_key_checking
+    int scp_timeout_seconds;        // timeout_seconds
     // [agent]
     int report_interval_minutes;    // report_interval_minutes
     std::string report_dir;         // report_dir
@@ -40,6 +55,10 @@ void generate_boundary_seq_number(char *boundary, int length);
 void SetDefaultAgentConfig(AgentConfig &cfg);
 int LoadAgentConfig(AgentConfig &cfg, std::string &output);
 std::string JoinPath(const std::string &dir, const std::string &name);
+int DeliverReport(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str);
+int CopyToShare(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str);
+int ScpFile(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str);
+int RunCommand(const std::string &cmdline, DWORD timeout_ms, std::string &output);
 int UploadFile(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str);
 std::string WStringToString(const std::wstring& wstr);
 void CheckHResult(HRESULT hr, const char* message, std::string &output);

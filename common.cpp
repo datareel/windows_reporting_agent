@@ -62,11 +62,19 @@ std::string GetLastErrorAsString()
   
   LPSTR messageBuffer = nullptr;
   
+  // WinINet error messages (12001-12999) live in wininet.dll, not the system table
+  DWORD flags = FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
+  HMODULE hWininet = NULL;
+  if (errorMessageID >= INTERNET_ERROR_BASE && errorMessageID <= INTERNET_ERROR_LAST) {
+    hWininet = GetModuleHandleA("wininet.dll");
+    if (hWininet) flags |= FORMAT_MESSAGE_FROM_HMODULE;
+  }
+
   // Ask Win32 to give us the string representation of that message ID.
   // The parameters we pass tell FormatMessage to allocate the buffer.
   size_t size = FormatMessageA(
-			       FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-			       NULL, 
+			       flags,
+			       hWininet, 
 			       errorMessageID, 
 			       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), 
 			       (LPSTR)&messageBuffer, 
@@ -74,8 +82,16 @@ std::string GetLastErrorAsString()
 			       NULL
 			       );
   
+  if (size == 0 || messageBuffer == nullptr) {
+    return "error code " + std::to_string(errorMessageID);
+  }
+
   // Copy the error message into a std::string.
   std::string message(messageBuffer, size);
+  while (!message.empty() && (message.back() == '\r' || message.back() == '\n' || message.back() == ' ')) {
+    message.pop_back();
+  }
+  message += " (error code " + std::to_string(errorMessageID) + ")";
   
   // Free the Win32 allocated buffer.
   LocalFree(messageBuffer);
@@ -131,11 +147,23 @@ void generate_boundary_seq_number(char *boundary, int length)
 
 void SetDefaultAgentConfig(AgentConfig &cfg)
 {
+  cfg.delivery_methods.clear();
+  cfg.delivery_methods.push_back("https");
   cfg.server_host = "reports.example.com";
   cfg.server_port = INTERNET_DEFAULT_HTTPS_PORT;
   cfg.upload_path = "/windows/upload/upload.php";
   cfg.use_https = true;
   cfg.ignore_cert_revocation = true;
+  cfg.cifs_share.clear();
+  cfg.scp_host.clear();
+  cfg.scp_port = 22;
+  cfg.scp_user.clear();
+  cfg.scp_key_file.clear();
+  cfg.scp_remote_dir.clear();
+  cfg.scp_path = "%SystemRoot%\\System32\\OpenSSH\\scp.exe";
+  cfg.scp_known_hosts.clear();
+  cfg.scp_host_key_check = "yes";
+  cfg.scp_timeout_seconds = 120;
   cfg.report_interval_minutes = 45;
   cfg.report_dir = "C:\\";
   cfg.log_file = "C:\\windows_report_agent.log";
@@ -149,6 +177,37 @@ static std::string ReadIniString(const char *section, const char *key, const std
   char buffer[1024];
   GetPrivateProfileStringA(section, key, default_value.c_str(), buffer, sizeof(buffer), ini_path.c_str());
   return std::string(buffer);
+}
+
+static std::string Trim(const std::string &str)
+{
+  size_t start = str.find_first_not_of(" \t");
+  if(start == std::string::npos) return std::string();
+  size_t end = str.find_last_not_of(" \t");
+  return str.substr(start, end - start + 1);
+}
+
+static std::string ToLower(std::string str)
+{
+  for (char &c : str) {
+    c = std::tolower((unsigned char)c);
+  }
+  return str;
+}
+
+// Split a comma separated list such as "https, cifs" into lower case items
+static std::vector<std::string> SplitList(const std::string &list)
+{
+  std::vector<std::string> items;
+  size_t start = 0;
+  while(start <= list.length()) {
+    size_t end = list.find(',', start);
+    if(end == std::string::npos) end = list.length();
+    std::string item = ToLower(Trim(list.substr(start, end - start)));
+    if(!item.empty()) items.push_back(item);
+    start = end + 1;
+  }
+  return items;
 }
 
 static int ReadIniInt(const char *section, const char *key, int default_value, const std::string &ini_path)
@@ -177,12 +236,31 @@ int LoadAgentConfig(AgentConfig &cfg, std::string &output)
     return 1;
   }
 
-  cfg.server_host = ReadIniString("server", "host", cfg.server_host, ini_path);
-  cfg.use_https = ReadIniInt("server", "use_https", cfg.use_https ? 1 : 0, ini_path) != 0;
+  std::string methods = ReadIniString("delivery", "methods", "https", ini_path);
+  cfg.delivery_methods = SplitList(methods);
+  if(cfg.delivery_methods.empty()) {
+    output += "WARNING - No delivery methods in " + ini_path + ", using https\n";
+    cfg.delivery_methods.push_back("https");
+  }
+
+  cfg.server_host = ReadIniString("https", "host", cfg.server_host, ini_path);
+  cfg.use_https = ReadIniInt("https", "use_https", cfg.use_https ? 1 : 0, ini_path) != 0;
   if(!cfg.use_https) cfg.server_port = INTERNET_DEFAULT_HTTP_PORT;
-  cfg.server_port = ReadIniInt("server", "port", cfg.server_port, ini_path);
-  cfg.upload_path = ReadIniString("server", "upload_path", cfg.upload_path, ini_path);
-  cfg.ignore_cert_revocation = ReadIniInt("server", "ignore_cert_revocation", cfg.ignore_cert_revocation ? 1 : 0, ini_path) != 0;
+  cfg.server_port = ReadIniInt("https", "port", cfg.server_port, ini_path);
+  cfg.upload_path = ReadIniString("https", "upload_path", cfg.upload_path, ini_path);
+  cfg.ignore_cert_revocation = ReadIniInt("https", "ignore_cert_revocation", cfg.ignore_cert_revocation ? 1 : 0, ini_path) != 0;
+
+  cfg.cifs_share = ReadIniString("cifs", "share", cfg.cifs_share, ini_path);
+
+  cfg.scp_host = ReadIniString("scp", "host", cfg.scp_host, ini_path);
+  cfg.scp_port = ReadIniInt("scp", "port", cfg.scp_port, ini_path);
+  cfg.scp_user = ReadIniString("scp", "user", cfg.scp_user, ini_path);
+  cfg.scp_key_file = ReadIniString("scp", "key_file", cfg.scp_key_file, ini_path);
+  cfg.scp_remote_dir = ReadIniString("scp", "remote_dir", cfg.scp_remote_dir, ini_path);
+  cfg.scp_path = ReadIniString("scp", "scp_path", cfg.scp_path, ini_path);
+  cfg.scp_known_hosts = ReadIniString("scp", "known_hosts_file", cfg.scp_known_hosts, ini_path);
+  cfg.scp_host_key_check = ToLower(ReadIniString("scp", "strict_host_key_checking", cfg.scp_host_key_check, ini_path));
+  cfg.scp_timeout_seconds = ReadIniInt("scp", "timeout_seconds", cfg.scp_timeout_seconds, ini_path);
 
   cfg.report_interval_minutes = ReadIniInt("agent", "report_interval_minutes", cfg.report_interval_minutes, ini_path);
   cfg.report_dir = ReadIniString("agent", "report_dir", cfg.report_dir, ini_path);
@@ -194,6 +272,12 @@ int LoadAgentConfig(AgentConfig &cfg, std::string &output)
   if(cfg.server_port <= 0 || cfg.server_port > 65535) {
     output += "WARNING - Invalid port in " + ini_path + ", using default\n";
     cfg.server_port = cfg.use_https ? INTERNET_DEFAULT_HTTPS_PORT : INTERNET_DEFAULT_HTTP_PORT;
+  }
+  if(cfg.scp_port <= 0 || cfg.scp_port > 65535) cfg.scp_port = 22;
+  if(cfg.scp_timeout_seconds < 10) cfg.scp_timeout_seconds = 10;
+  if(cfg.scp_host_key_check != "yes" && cfg.scp_host_key_check != "accept-new") {
+    output += "WARNING - strict_host_key_checking must be yes or accept-new, using yes\n";
+    cfg.scp_host_key_check = "yes";
   }
   if(cfg.report_interval_minutes < 1) cfg.report_interval_minutes = 1;
   if(cfg.event_lookback_days < 1) cfg.event_lookback_days = 1;
@@ -209,6 +293,195 @@ std::string JoinPath(const std::string &dir, const std::string &name)
   char last = dir[dir.length() - 1];
   if(last == '\\' || last == '/') return dir + name;
   return dir + "\\" + name;
+}
+
+int DeliverReport(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str)
+{
+  // Run every method listed in [delivery] methods, so one failing
+  // method does not stop the others
+  int error_level = 0;
+  output_str.clear();
+
+  for (const std::string &method : cfg.delivery_methods) {
+    std::string method_output;
+    int rv = 0;
+    if(method == "https") {
+      rv = UploadFile(cfg, input_fname, upload_fname, method_output);
+    }
+    else if(method == "cifs") {
+      rv = CopyToShare(cfg, input_fname, upload_fname, method_output);
+    }
+    else if(method == "scp") {
+      rv = ScpFile(cfg, input_fname, upload_fname, method_output);
+    }
+    else {
+      rv = -1;
+      method_output = "ERROR - Unknown delivery method " + method;
+    }
+    output_str += "[" + method + "] " + method_output + "\n";
+    if(rv != 0) error_level = -1;
+  }
+
+  return error_level;
+}
+
+int CopyToShare(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str)
+{
+  // The service runs as LocalSystem, so on a domain it reaches the share
+  // as the computer account (DOMAIN\HOSTNAME$). Grant that account, or
+  // Domain Computers, write access to the share.
+  if(cfg.cifs_share.empty()) {
+    output_str = "ERROR - No share set in the [cifs] section";
+    return -1;
+  }
+
+  // Copy to a temporary name first, then rename, so a reader on the
+  // share never sees a partly written report
+  std::string dest_fname = JoinPath(cfg.cifs_share, upload_fname);
+  std::string tmp_fname = dest_fname + ".tmp";
+
+  if(!CopyFileA(input_fname.c_str(), tmp_fname.c_str(), FALSE)) {
+    output_str = "ERROR - Could not copy report to " + tmp_fname + ": " + GetLastErrorAsString();
+    return -1;
+  }
+  if(!MoveFileExA(tmp_fname.c_str(), dest_fname.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+    output_str = "ERROR - Could not rename " + tmp_fname + " to " + dest_fname + ": " + GetLastErrorAsString();
+    DeleteFileA(tmp_fname.c_str());
+    return -1;
+  }
+
+  output_str = "Copied report to " + dest_fname;
+  return 0;
+}
+
+static std::string ExpandEnv(const std::string &str)
+{
+  char buffer[MAX_PATH * 2];
+  DWORD len = ExpandEnvironmentStringsA(str.c_str(), buffer, sizeof(buffer));
+  if(len == 0 || len > sizeof(buffer)) return str;
+  return std::string(buffer);
+}
+
+int RunCommand(const std::string &cmdline, DWORD timeout_ms, std::string &output)
+{
+  output.clear();
+
+  // Capture the program's stdout and stderr for the log file
+  SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
+  HANDLE hRead = NULL, hWrite = NULL;
+  if(!CreatePipe(&hRead, &hWrite, &sa, 0)) {
+    output = "ERROR - Could not create pipe: " + GetLastErrorAsString();
+    return -1;
+  }
+  SetHandleInformation(hRead, HANDLE_FLAG_INHERIT, 0);
+
+  STARTUPINFOA si;
+  PROCESS_INFORMATION pi;
+  memset(&si, 0, sizeof(si));
+  memset(&pi, 0, sizeof(pi));
+  si.cb = sizeof(si);
+  si.dwFlags = STARTF_USESTDHANDLES;
+  si.hStdInput = NULL;
+  si.hStdOutput = hWrite;
+  si.hStdError = hWrite;
+
+  std::vector<char> cmd(cmdline.begin(), cmdline.end());
+  cmd.push_back('\0');
+
+  if(!CreateProcessA(NULL, cmd.data(), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+    output = "ERROR - Could not run " + cmdline + ": " + GetLastErrorAsString();
+    CloseHandle(hRead);
+    CloseHandle(hWrite);
+    return -1;
+  }
+  CloseHandle(hWrite);
+
+  // Read output until the program exits or the timeout runs out
+  DWORD start = GetTickCount();
+  char buffer[1024];
+  for(;;) {
+    DWORD avail = 0;
+    if(PeekNamedPipe(hRead, NULL, 0, NULL, &avail, NULL) && avail > 0) {
+      DWORD bytesRead = 0;
+      if(ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+	buffer[bytesRead] = '\0';
+	output += buffer;
+      }
+      continue;
+    }
+    if(WaitForSingleObject(pi.hProcess, 100) == WAIT_OBJECT_0) {
+      // Drain anything left in the pipe
+      DWORD bytesRead = 0;
+      while(PeekNamedPipe(hRead, NULL, 0, NULL, &avail, NULL) && avail > 0 &&
+	    ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+	buffer[bytesRead] = '\0';
+	output += buffer;
+      }
+      break;
+    }
+    if(GetTickCount() - start > timeout_ms) {
+      TerminateProcess(pi.hProcess, 1);
+      output += "ERROR - Command timed out\n";
+      CloseHandle(pi.hProcess);
+      CloseHandle(pi.hThread);
+      CloseHandle(hRead);
+      return -1;
+    }
+  }
+
+  DWORD exit_code = 1;
+  GetExitCodeProcess(pi.hProcess, &exit_code);
+  CloseHandle(pi.hProcess);
+  CloseHandle(pi.hThread);
+  CloseHandle(hRead);
+
+  return (exit_code == 0) ? 0 : -1;
+}
+
+int ScpFile(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str)
+{
+  // Uses the OpenSSH client that ships with Windows 10/11 and Server 2019+.
+  // The key must have no passphrase, since the service runs unattended.
+  if(cfg.scp_host.empty() || cfg.scp_user.empty() || cfg.scp_key_file.empty() || cfg.scp_remote_dir.empty()) {
+    output_str = "ERROR - The [scp] section needs host, user, key_file and remote_dir";
+    return -1;
+  }
+
+  std::string scp_exe = ExpandEnv(cfg.scp_path);
+  if(GetFileAttributesA(scp_exe.c_str()) == INVALID_FILE_ATTRIBUTES) {
+    // A 32-bit build sees the 32-bit System32, which has no OpenSSH,
+    // so try the 64-bit System32 through Sysnative
+    std::string native_exe = ExpandEnv("%SystemRoot%\\Sysnative\\OpenSSH\\scp.exe");
+    if(GetFileAttributesA(native_exe.c_str()) == INVALID_FILE_ATTRIBUTES) {
+      output_str = "ERROR - scp not found at " + scp_exe + ". Install the Windows OpenSSH client or set scp_path";
+      return -1;
+    }
+    scp_exe = native_exe;
+  }
+
+  std::string remote_dir = cfg.scp_remote_dir;
+  if(remote_dir[remote_dir.length() - 1] != '/') remote_dir += "/";
+
+  std::string cmdline = "\"" + scp_exe + "\" -q -B";
+  cmdline += " -P " + std::to_string(cfg.scp_port);
+  cmdline += " -i \"" + ExpandEnv(cfg.scp_key_file) + "\"";
+  cmdline += " -o StrictHostKeyChecking=" + cfg.scp_host_key_check;
+  if(!cfg.scp_known_hosts.empty()) {
+    cmdline += " -o UserKnownHostsFile=\"" + ExpandEnv(cfg.scp_known_hosts) + "\"";
+  }
+  cmdline += " -o ConnectTimeout=30";
+  cmdline += " \"" + input_fname + "\"";
+  cmdline += " \"" + cfg.scp_user + "@" + cfg.scp_host + ":" + remote_dir + upload_fname + "\"";
+
+  std::string cmd_output;
+  int rv = RunCommand(cmdline, (DWORD)cfg.scp_timeout_seconds * 1000, cmd_output);
+  if(rv != 0) {
+    output_str = "ERROR - scp to " + cfg.scp_user + "@" + cfg.scp_host + ":" + remote_dir + " failed: " + cmd_output;
+    return -1;
+  }
+
+  output_str = "Copied report to " + cfg.scp_user + "@" + cfg.scp_host + ":" + remote_dir + upload_fname;
+  return 0;
 }
 
 int UploadFile(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str)

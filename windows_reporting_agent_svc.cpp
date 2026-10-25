@@ -564,10 +564,10 @@ int upload_agent_report(const AgentConfig &cfg, std::string &output) {
 
   CloseHandle(hFile);
   
-  int error_level = UploadFile(cfg, input_fname, upload_fname, output_str);
+  int error_level = DeliverReport(cfg, input_fname, upload_fname, output_str);
 
   if(error_level != 0) {
-    output += "ERROR - Uploadfile() function reported errors\n";
+    output += "ERROR - One or more report delivery methods failed\n";
   }
   output += output_str += "\n";
   
