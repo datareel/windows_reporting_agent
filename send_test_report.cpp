@@ -171,6 +171,25 @@ int upload_agent_report(const AgentConfig &cfg, std::string &output) {
   report_data += "END IP ADDRESS\n";
   report_data += "\n";
 
+  // Usage for trends (DRSM): CPU sampled over 2 seconds
+  report_data += "PERFORMANCE:\n";
+  get_performance(sbuf, 2000);
+  report_data += sbuf;
+  report_data += "END PERFORMANCE\n";
+  report_data += "\n";
+
+  report_data += "DISK USAGE:\n";
+  get_disk_usage(sbuf);
+  report_data += sbuf;
+  report_data += "END DISK USAGE\n";
+  report_data += "\n";
+
+  report_data += "NETWORK:\n";
+  get_network_stats(sbuf);
+  report_data += sbuf;
+  report_data += "END NETWORK\n";
+  report_data += "\n";
+
   DIR.clear();
   DIR = JoinPath(cfg.users_dir, "*"); // Note the trailing '*' wildcard
   list_dirs(DIR, sbuf);

@@ -23,7 +23,7 @@
 </header>
 <div class="layout">
   <nav class="sidebar" aria-label="Documentation">
-    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html" class="active" aria-current="page">Reports and status page</a><div class="toc"><a href="#format">Report format</a><a href="#sections">Sections</a><a href="#status">Fleet status page</a><a href="#demo">Live demo</a><a href="#script">Status page script</a><a href="#drsm">DRSM</a></div><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/windows_reporting_agent/demo/">Live demo</a><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html" class="active" aria-current="page">Reports and status page</a><div class="toc"><a href="#format">Report format</a><a href="#sections">Sections</a><a href="#usage">Usage for trends</a><a href="#status">Fleet status page</a><a href="#demo">Live demo</a><a href="#script">Status page script</a><a href="#drsm">DRSM</a></div><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/windows_reporting_agent/demo/">Live demo</a><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
   </nav>
   <main class="content" id="main">
 <h1>Reports and status page</h1>
@@ -49,7 +49,28 @@ END INSTALLED WINDOWS PATCHES</code></pre>
 <p><code>ETIME</code> is the report time in seconds since 1970 (UTC), for check-in age calculations.</p>
 
 <h2 id="sections">Sections</h2>
-<div class="table-wrap"><table><thead><tr><th>Section</th><th>Contents</th></tr></thead><tbody><tr><td>SERVICE TAG AND BARCODE</td><td>Service tag (BIOS serial number, the Dell service tag on Dell computers) and asset tag from WMI</td></tr><tr><td>IP ADDRESS</td><td>IPv4 addresses of the network adapters that are up</td></tr><tr><td>USERS</td><td>Profile folders in <code>users_dir</code></td></tr><tr><td>ALL INSTALLED PROGRAMS</td><td>Name and version of every program in the 64-bit and 32-bit uninstall registry keys</td></tr><tr><td>WINDOWS DEFENDER ALERTS</td><td>Critical, error and warning events from the Defender event log for <code>event_lookback_days</code></td></tr><tr><td>INSTALLED WINDOWS PATCHES</td><td>Windows Update installation history</td></tr><tr><td>HOT FIXES</td><td>Installed hotfixes from WMI (<code>Win32_QuickFixEngineering</code>)</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Section</th><th>Contents</th></tr></thead><tbody><tr><td>SERVICE TAG AND BARCODE</td><td>Service tag (BIOS serial number, the Dell service tag on Dell computers) and asset tag from WMI</td></tr><tr><td>IP ADDRESS</td><td>IPv4 addresses of the network adapters that are up</td></tr><tr><td>PERFORMANCE</td><td>CPU count and use (sampled over 5 seconds), memory total, available and used, commit charge, processes, threads, uptime</td></tr><tr><td>DISK USAGE</td><td>Size, used, free and percent used of each local fixed drive</td></tr><tr><td>NETWORK</td><td>Per adapter that is up: link speed, bytes, packets, errors and discards received and sent, totals since the adapter came up</td></tr><tr><td>USERS</td><td>Profile folders in <code>users_dir</code></td></tr><tr><td>ALL INSTALLED PROGRAMS</td><td>Name and version of every program in the 64-bit and 32-bit uninstall registry keys</td></tr><tr><td>WINDOWS DEFENDER ALERTS</td><td>Critical, error and warning events from the Defender event log for <code>event_lookback_days</code></td></tr><tr><td>INSTALLED WINDOWS PATCHES</td><td>Windows Update installation history</td></tr><tr><td>HOT FIXES</td><td>Installed hotfixes from WMI (<code>Win32_QuickFixEngineering</code>)</td></tr></tbody></table></div>
+
+<h2 id="usage">Usage for trends</h2>
+<p>PERFORMANCE, DISK USAGE and NETWORK are <code>name=value</code> lines that a monitor such as the DataReel System Monitor can graph. The names match the DRSM Linux metrics where there is one. The network counters are running totals, so take the difference between two reports for a rate. Idle virtual adapters with no traffic are left out. <code>report.php</code> shows them as a Usage panel.</p>
+<pre><code>PERFORMANCE:
+cpu_count=4
+cpu_used_pct=7.2
+mem_total_mb=16364
+mem_available_mb=12307
+mem_used_pct=24.8
+commit_limit_mb=17388
+commit_used_mb=3740
+uptime_seconds=11230
+END PERFORMANCE
+
+DISK USAGE:
+drive=C: size_mb=510963 used_mb=108062 free_mb=402901 used_pct=21.1
+END DISK USAGE
+
+NETWORK:
+adapter="Ethernet" if_index=10 speed_mbps=1000 rx_bytes=91234664 tx_bytes=37097265 rx_errors=0 tx_errors=0 ...
+END NETWORK</code></pre>
 
 <h2 id="status">Fleet status page</h2>
 <p><code>status.php</code> in the upload pages folder lists every computer with its state, worst first. See it on the <a href= + DEMO + >live demo</a>.</p>

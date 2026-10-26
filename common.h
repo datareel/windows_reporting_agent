@@ -79,6 +79,9 @@ int get_dell_service_tag(std::string &output);
 int GetDellServiceTag(std::string &output);
 int GetDellAssetTag(std::string &output);
 int GetIPAddress(std::string &output);
+int get_performance(std::string &output, DWORD cpu_sample_ms);
+int get_disk_usage(std::string &output);
+int get_network_stats(std::string &output);
 std::string PWCHAR_to_string(PWCHAR pwchar);
 
 #endif

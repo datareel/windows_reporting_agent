@@ -191,6 +191,46 @@ def build_report(rng, host, scen, report_time, users):
         lines.append("")
     lines.append("END IP ADDRESS")
     lines.append("")
+
+    # Usage for trends: a few computers run hot or have a nearly full disk
+    is_srv = host.startswith("srv-")
+    cpus = 16 if is_srv else (12 if host.startswith("ws-") else 8)
+    mem_total = 65536 if is_srv else rng.choice([16384, 16384, 32768])
+    busy = rng.random() < 0.12
+    mem_used_pct = rng.uniform(75, 94) if busy else rng.uniform(28, 70)
+    mem_avail = int(mem_total * (1 - mem_used_pct / 100))
+    lines.append("PERFORMANCE:")
+    lines.append("cpu_count=%d" % cpus)
+    lines.append("cpu_used_pct=%.1f" % (rng.uniform(70, 97) if busy else rng.uniform(1, 35)))
+    lines.append("cpu_sample_seconds=5")
+    lines.append("mem_total_mb=%d" % mem_total)
+    lines.append("mem_available_mb=%d" % mem_avail)
+    lines.append("mem_used_pct=%.1f" % (100.0 * (mem_total - mem_avail) / mem_total))
+    lines.append("commit_limit_mb=%d" % (mem_total + 4096))
+    lines.append("commit_used_mb=%d" % int((mem_total - mem_avail) * 1.3))
+    lines.append("process_count=%d" % rng.randint(140, 320))
+    lines.append("thread_count=%d" % rng.randint(1800, 4200))
+    lines.append("uptime_seconds=%d" % rng.randint(3600, 40 * 86400))
+    lines.append("END PERFORMANCE")
+    lines.append("")
+    lines.append("DISK USAGE:")
+    drives = [("C:", rng.choice([488281, 976562]))] + ([("D:", 1953125)] if is_srv or rng.random() < 0.2 else [])
+    for i, (letter, size) in enumerate(drives):
+        pct = rng.uniform(90, 98) if (i == 0 and rng.random() < 0.1) else rng.uniform(25, 80)
+        used = int(size * pct / 100)
+        lines.append("drive=%s size_mb=%d used_mb=%d free_mb=%d used_pct=%.1f" % (letter, size, used, size - used, 100.0 * used / size))
+    lines.append("END DISK USAGE")
+    lines.append("")
+    lines.append("NETWORK:")
+    speed = 1000 if adapter.startswith("Ethernet") else rng.choice([866, 1201, 2402])
+    rx = rng.randint(2, 80) * 10 ** 9
+    tx = rx // rng.randint(3, 12)
+    lines.append('adapter="%s" if_index=%d speed_mbps=%d rx_bytes=%d tx_bytes=%d rx_packets=%d tx_packets=%d '
+                 'rx_errors=%d tx_errors=0 rx_discards=%d tx_discards=0'
+                 % (adapter, rng.randint(4, 20), speed, rx, tx, rx // 900, tx // 600,
+                    rng.choice([0, 0, 0, 0, rng.randint(1, 400)]), rng.choice([0, 0, rng.randint(1, 50)])))
+    lines.append("END NETWORK")
+    lines.append("")
     lines.append("USERS:")
     profiles = ["All Users", "Default", "Default User", "Public"] + users
     if host.startswith("srv-"):

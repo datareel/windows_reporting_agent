@@ -50,6 +50,39 @@ wra_page_start($hostname);
   <div><dt>Agent version</dt><dd><?php echo h($r['version']); ?></dd></div>
 </dl></div>
 
+<?php if ($r['performance'] || $r['disks'] || $r['nics']) {
+    $pf = $r['performance'];
+    $v = function ($k, $suffix = '') use ($pf) { return isset($pf[$k]) ? h($pf[$k] . $suffix) : '-'; };
+    $up = isset($pf['uptime_seconds']) ? (int)$pf['uptime_seconds'] : null;
+?>
+<h2>Usage</h2>
+<div class="card"><dl class="facts">
+  <div><dt>CPU used</dt><dd><?php echo $v('cpu_used_pct', ' %'); ?> <span class="muted">of <?php echo $v('cpu_count'); ?> CPUs</span></dd></div>
+  <div><dt>Memory used</dt><dd><?php echo $v('mem_used_pct', ' %'); ?> <span class="muted"><?php echo $v('mem_available_mb'); ?> of <?php echo $v('mem_total_mb'); ?> MB free</span></dd></div>
+  <div><dt>Commit charge</dt><dd><?php echo $v('commit_used_mb'); ?> <span class="muted">of <?php echo $v('commit_limit_mb'); ?> MB</span></dd></div>
+  <div><dt>Processes</dt><dd><?php echo $v('process_count'); ?></dd></div>
+  <div><dt>Up for</dt><dd><?php echo $up === null ? '-' : h(floor($up / 86400) . ' days ' . floor(($up % 86400) / 3600) . ' h'); ?></dd></div>
+</dl></div>
+<?php if ($r['disks']) { ?>
+<div class="table-wrap" style="margin-top:12px"><table>
+<thead><tr><th>Drive</th><th>Size MB</th><th>Used MB</th><th>Free MB</th><th>Used</th></tr></thead><tbody>
+<?php foreach ($r['disks'] as $d) { ?><tr><td class="mono"><?php echo h(isset($d['drive']) ? $d['drive'] : ''); ?></td><td><?php echo h(isset($d['size_mb']) ? $d['size_mb'] : ''); ?></td><td><?php echo h(isset($d['used_mb']) ? $d['used_mb'] : ''); ?></td><td><?php echo h(isset($d['free_mb']) ? $d['free_mb'] : ''); ?></td><td><?php echo h(isset($d['used_pct']) ? $d['used_pct'] . ' %' : ''); ?></td></tr><?php } ?>
+</tbody></table></div>
+<?php } ?>
+<?php if ($r['nics']) { ?>
+<div class="table-wrap" style="margin-top:12px"><table>
+<thead><tr><th>Adapter</th><th>Speed</th><th>Received</th><th>Sent</th><th>Errors</th><th>Discards</th></tr></thead><tbody>
+<?php foreach ($r['nics'] as $n) {
+    $g = function ($k) use ($n) { return isset($n[$k]) ? $n[$k] : '0'; }; ?>
+<tr><td><?php echo h($g('adapter')); ?></td><td><?php echo h($g('speed_mbps') . ' Mb/s'); ?></td>
+<td><?php echo h(round((float)$g('rx_bytes') / 1048576, 1) . ' MB'); ?></td><td><?php echo h(round((float)$g('tx_bytes') / 1048576, 1) . ' MB'); ?></td>
+<td><?php echo h(((int)$g('rx_errors') + (int)$g('tx_errors'))); ?></td><td><?php echo h(((int)$g('rx_discards') + (int)$g('tx_discards'))); ?></td></tr>
+<?php } ?>
+</tbody></table></div>
+<p class="muted">Network counters are totals since the adapter came up.</p>
+<?php } ?>
+<?php } ?>
+
 <h2>Windows Defender (<?php echo count($r['defender']); ?>)</h2>
 <?php if ($r['defender']) { ?>
 <div class="table-wrap"><table>

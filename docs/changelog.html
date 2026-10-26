@@ -35,6 +35,8 @@
   <li><strong>Upgrades from 3.2:</strong> setup moves the settings, certificate, registration and share password to the new names and removes the old service and folders. The agent keeps its machine key, so it stays approved.</li>
   <li><strong>File share login:</strong> CIFS delivery to shares outside a Windows domain, with the password encrypted (DPAPI) in the agent data folder. Set it with <code>drra_svc.exe set-cifs-password</code> or the setup switches <code>/CIFSUSER=</code> and <code>/CIFSPASS=</code>.</li>
   <li><strong>Dashboard login:</strong> the admin and status pages can use the DataReel System Monitor dashboard login (<code>login = drsm</code>).</li>
+  <li><strong>Usage for trends:</strong> new PERFORMANCE (CPU, memory, commit charge, uptime), DISK USAGE (each fixed drive) and NETWORK (adapter counters) sections, as <code>name=value</code> lines for DRSM trend graphs, shown on the report page.</li>
+  <li><strong>Every 15 minutes:</strong> the default report interval is 15 minutes (it was 45), set with <code>report_interval_minutes</code> or setup <code>/INTERVAL=</code>.</li>
   <li><strong>Fixes:</strong> the agent registers again when it is pointed at a different server, and a new <code>/SERVER=</code> in setup turns HTTPS on.</li>
 </ul>
 

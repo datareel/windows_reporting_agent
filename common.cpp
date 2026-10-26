@@ -16,7 +16,10 @@
 #include <Wbemidl.h>
 #include <strsafe.h>
 #include <winevt.h>
+#include <ws2ipdef.h>   // before iphlpapi.h, for GetIfTable2 (netioapi.h)
 #include <iphlpapi.h>
+#include <netioapi.h>
+#include <psapi.h>
 #include <ws2tcpip.h>
 #include <winnetwk.h>
 #include <wincrypt.h>
@@ -39,6 +42,7 @@
 #pragma comment(lib, "iphlpapi.lib")
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "mpr.lib")
+#pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "crypt32.lib")
 
 // Windows Update Agent (WUA) API
@@ -1380,3 +1384,149 @@ std::string PWCHAR_to_string(PWCHAR pwchar) {
   return result;
 }
 
+
+// ------------------------------------------------- usage for trends
+//
+// The PERFORMANCE, DISK USAGE and NETWORK sections are name=value lines,
+// one item per line, so a monitor such as DRSM can read them as metrics.
+// The names match the DRSM Linux metrics where there is one.
+
+static std::string FormatPct(double value)
+{
+  char buf[32];
+  snprintf(buf, sizeof(buf), "%.1f", value);
+  return std::string(buf);
+}
+
+static ULONGLONG FileTimeToU64(const FILETIME &ft)
+{
+  ULARGE_INTEGER u;
+  u.LowPart = ft.dwLowDateTime;
+  u.HighPart = ft.dwHighDateTime;
+  return u.QuadPart;
+}
+
+// Quote a name for a name=value line: "Wi-Fi 2"
+static std::string QuoteValue(const std::string &value)
+{
+  std::string q = "\"";
+  for (char c : value) {
+    if (c == '"' || c == '\\') q += '\\';
+    if (c != '\r' && c != '\n') q += c;
+  }
+  return q + "\"";
+}
+
+int get_performance(std::string &output, DWORD cpu_sample_ms)
+{
+  output.clear();
+
+  SYSTEM_INFO si;
+  GetNativeSystemInfo(&si);
+  output += "cpu_count=" + std::to_string(si.dwNumberOfProcessors) + "\n";
+
+  // CPU use over the sample time: busy = kernel + user - idle
+  FILETIME idle1, kernel1, user1, idle2, kernel2, user2;
+  if (GetSystemTimes(&idle1, &kernel1, &user1)) {
+    Sleep(cpu_sample_ms);
+    if (GetSystemTimes(&idle2, &kernel2, &user2)) {
+      ULONGLONG idle = FileTimeToU64(idle2) - FileTimeToU64(idle1);
+      ULONGLONG total = (FileTimeToU64(kernel2) - FileTimeToU64(kernel1)) + (FileTimeToU64(user2) - FileTimeToU64(user1));
+      double used = (total > 0) ? 100.0 * (double)(total - idle) / (double)total : 0.0;
+      if (used < 0) used = 0;
+      output += "cpu_used_pct=" + FormatPct(used) + "\n";
+      output += "cpu_sample_seconds=" + std::to_string(cpu_sample_ms / 1000) + "\n";
+    }
+  }
+
+  MEMORYSTATUSEX ms;
+  ms.dwLength = sizeof(ms);
+  if (GlobalMemoryStatusEx(&ms)) {
+    ULONGLONG total_mb = ms.ullTotalPhys / (1024 * 1024);
+    ULONGLONG avail_mb = ms.ullAvailPhys / (1024 * 1024);
+    output += "mem_total_mb=" + std::to_string(total_mb) + "\n";
+    output += "mem_available_mb=" + std::to_string(avail_mb) + "\n";
+    output += "mem_used_pct=" + FormatPct(total_mb ? 100.0 * (double)(total_mb - avail_mb) / (double)total_mb : 0.0) + "\n";
+  }
+
+  // Commit charge is the Windows counterpart of memory plus swap in use
+  PERFORMANCE_INFORMATION pi;
+  pi.cb = sizeof(pi);
+  if (GetPerformanceInfo(&pi, sizeof(pi))) {
+    ULONGLONG page = pi.PageSize;
+    output += "commit_limit_mb=" + std::to_string((ULONGLONG)pi.CommitLimit * page / (1024 * 1024)) + "\n";
+    output += "commit_used_mb=" + std::to_string((ULONGLONG)pi.CommitTotal * page / (1024 * 1024)) + "\n";
+    output += "process_count=" + std::to_string(pi.ProcessCount) + "\n";
+    output += "thread_count=" + std::to_string(pi.ThreadCount) + "\n";
+  }
+
+  output += "uptime_seconds=" + std::to_string(GetTickCount64() / 1000) + "\n";
+  return 0;
+}
+
+int get_disk_usage(std::string &output)
+{
+  output.clear();
+  char drives[512];
+  DWORD len = GetLogicalDriveStringsA(sizeof(drives) - 1, drives);
+  if (len == 0 || len >= sizeof(drives)) {
+    output = "ERROR - Could not list the drives: " + GetLastErrorAsString() + "\n";
+    return 1;
+  }
+
+  // Local fixed drives only: no network, removable or optical drives
+  for (char *d = drives; *d; d += strlen(d) + 1) {
+    if (GetDriveTypeA(d) != DRIVE_FIXED) continue;
+    ULARGE_INTEGER avail, total, free_bytes;
+    if (!GetDiskFreeSpaceExA(d, &avail, &total, &free_bytes)) continue;
+    ULONGLONG size_mb = total.QuadPart / (1024 * 1024);
+    ULONGLONG free_mb = free_bytes.QuadPart / (1024 * 1024);
+    ULONGLONG used_mb = size_mb - free_mb;
+    std::string drive(d);
+    if (!drive.empty() && drive.back() == '\\') drive.pop_back();
+    output += "drive=" + drive;
+    output += " size_mb=" + std::to_string(size_mb);
+    output += " used_mb=" + std::to_string(used_mb);
+    output += " free_mb=" + std::to_string(free_mb);
+    output += " used_pct=" + FormatPct(size_mb ? 100.0 * (double)used_mb / (double)size_mb : 0.0) + "\n";
+  }
+  return 0;
+}
+
+int get_network_stats(std::string &output)
+{
+  output.clear();
+  PMIB_IF_TABLE2 table = NULL;
+  DWORD rc = GetIfTable2(&table);
+  if (rc != NO_ERROR) {
+    SetLastError(rc);
+    output = "ERROR - Could not read the network interfaces: " + GetLastErrorAsString() + "\n";
+    return 1;
+  }
+
+  // Adapters that are up, without loopback and the filter driver copies
+  // Windows lists next to each adapter. Counters are totals since the
+  // adapter came up; a monitor takes the difference between reports.
+  for (ULONG i = 0; i < table->NumEntries; i++) {
+    const MIB_IF_ROW2 &row = table->Table[i];
+    if (row.OperStatus != IfOperStatusUp) continue;
+    if (row.Type == IF_TYPE_SOFTWARE_LOOPBACK) continue;
+    if (row.InterfaceAndOperStatusFlags.FilterInterface) continue;
+    if (row.InterfaceAndOperStatusFlags.EndPointInterface) continue;
+    // Idle virtual adapters (WAN miniports, Wi-Fi Direct): no traffic yet
+    if (!row.InterfaceAndOperStatusFlags.HardwareInterface && row.InOctets == 0 && row.OutOctets == 0) continue;
+    output += "adapter=" + QuoteValue(WStringToString(row.Alias));
+    output += " if_index=" + std::to_string(row.InterfaceIndex);
+    output += " speed_mbps=" + std::to_string(row.ReceiveLinkSpeed / 1000000ULL);
+    output += " rx_bytes=" + std::to_string(row.InOctets);
+    output += " tx_bytes=" + std::to_string(row.OutOctets);
+    output += " rx_packets=" + std::to_string(row.InUcastPkts + row.InNUcastPkts);
+    output += " tx_packets=" + std::to_string(row.OutUcastPkts + row.OutNUcastPkts);
+    output += " rx_errors=" + std::to_string(row.InErrors);
+    output += " tx_errors=" + std::to_string(row.OutErrors);
+    output += " rx_discards=" + std::to_string(row.InDiscards);
+    output += " tx_discards=" + std::to_string(row.OutDiscards) + "\n";
+  }
+  FreeMibTable(table);
+  return 0;
+}

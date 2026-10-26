@@ -451,7 +451,7 @@ page("configuration.html", "Configuration",
 # ---------------------------------------------------------------- reports
 page("reports.html", "Reports and status page",
      "The DataReel Reporting Agent report format and the fleet status page built from the reports.",
-     [("format", "Report format"), ("sections", "Sections"), ("status", "Fleet status page"), ("demo", "Live demo"), ("script", "Status page script"), ("drsm", "DRSM")],
+     [("format", "Report format"), ("sections", "Sections"), ("usage", "Usage for trends"), ("status", "Fleet status page"), ("demo", "Live demo"), ("script", "Status page script"), ("drsm", "DRSM")],
      """
 <h1>Reports and status page</h1>
 <p class="lead">Each computer's report is a plain text file, easy to read, grep and diff. The server keeps the latest one per computer.</p>
@@ -479,12 +479,22 @@ page("reports.html", "Reports and status page",
 """ + table(["Section", "Contents"], [
     ["SERVICE TAG AND BARCODE", "Service tag (BIOS serial number, the Dell service tag on Dell computers) and asset tag from WMI"],
     ["IP ADDRESS", "IPv4 addresses of the network adapters that are up"],
+    ["PERFORMANCE", "CPU count and use (sampled over 5 seconds), memory total, available and used, commit charge, processes, threads, uptime"],
+    ["DISK USAGE", "Size, used, free and percent used of each local fixed drive"],
+    ["NETWORK", "Per adapter that is up: link speed, bytes, packets, errors and discards received and sent, totals since the adapter came up"],
     ["USERS", "Profile folders in <code>users_dir</code>"],
     ["ALL INSTALLED PROGRAMS", "Name and version of every program in the 64-bit and 32-bit uninstall registry keys"],
     ["WINDOWS DEFENDER ALERTS", "Critical, error and warning events from the Defender event log for <code>event_lookback_days</code>"],
     ["INSTALLED WINDOWS PATCHES", "Windows Update installation history"],
     ["HOT FIXES", "Installed hotfixes from WMI (<code>Win32_QuickFixEngineering</code>)"],
 ]) + """
+
+<h2 id="usage">Usage for trends</h2>
+<p>PERFORMANCE, DISK USAGE and NETWORK are <code>name=value</code> lines that a monitor such as the DataReel System Monitor can graph. The names match the DRSM Linux metrics where there is one. The network counters are running totals, so take the difference between two reports for a rate. Idle virtual adapters with no traffic are left out. <code>report.php</code> shows them as a Usage panel.</p>
+""" + code([("", "PERFORMANCE:"), ("", "cpu_count=4"), ("", "cpu_used_pct=7.2"), ("", "mem_total_mb=16364"), ("", "mem_available_mb=12307"),
+            ("", "mem_used_pct=24.8"), ("", "commit_limit_mb=17388"), ("", "commit_used_mb=3740"), ("", "uptime_seconds=11230"), ("", "END PERFORMANCE"), ("", ""),
+            ("", "DISK USAGE:"), ("", "drive=C: size_mb=510963 used_mb=108062 free_mb=402901 used_pct=21.1"), ("", "END DISK USAGE"), ("", ""),
+            ("", "NETWORK:"), ("", 'adapter="Ethernet" if_index=10 speed_mbps=1000 rx_bytes=91234664 tx_bytes=37097265 rx_errors=0 tx_errors=0 ...'), ("", "END NETWORK")]) + """
 
 <h2 id="status">Fleet status page</h2>
 <p><code>status.php</code> in the upload pages folder lists every computer with its state, worst first. See it on the <a href="""" + DEMO + """">live demo</a>.</p>
@@ -645,6 +655,8 @@ page("changelog.html", "What's new",
   <li><strong>Upgrades from 3.2:</strong> setup moves the settings, certificate, registration and share password to the new names and removes the old service and folders. The agent keeps its machine key, so it stays approved.</li>
   <li><strong>File share login:</strong> CIFS delivery to shares outside a Windows domain, with the password encrypted (DPAPI) in the agent data folder. Set it with <code>drra_svc.exe set-cifs-password</code> or the setup switches <code>/CIFSUSER=</code> and <code>/CIFSPASS=</code>.</li>
   <li><strong>Dashboard login:</strong> the admin and status pages can use the DataReel System Monitor dashboard login (<code>login = drsm</code>).</li>
+  <li><strong>Usage for trends:</strong> new PERFORMANCE (CPU, memory, commit charge, uptime), DISK USAGE (each fixed drive) and NETWORK (adapter counters) sections, as <code>name=value</code> lines for DRSM trend graphs, shown on the report page.</li>
+  <li><strong>Every 15 minutes:</strong> the default report interval is 15 minutes (it was 45), set with <code>report_interval_minutes</code> or setup <code>/INTERVAL=</code>.</li>
   <li><strong>Fixes:</strong> the agent registers again when it is pointed at a different server, and a new <code>/SERVER=</code> in setup turns HTTPS on.</li>
 </ul>
 

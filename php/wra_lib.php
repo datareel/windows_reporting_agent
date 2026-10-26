@@ -258,7 +258,8 @@ function wra_parse_report($text) {
     }
     $r = array('version' => '', 'hostname' => '', 'etime' => null, 'datetime' => '',
                'service_tag' => '', 'asset_tag' => '', 'ips' => array(), 'users' => array(),
-               'apps' => array(), 'defender' => array(), 'patches' => array(), 'hotfixes' => array());
+               'apps' => array(), 'defender' => array(), 'patches' => array(), 'hotfixes' => array(),
+               'performance' => array(), 'disks' => array(), 'nics' => array());
     foreach (array('VERSION' => 'version', 'HOSTNAME' => 'hostname', 'DATETIME' => 'datetime') as $k => $f) {
         if (preg_match('/^' . $k . ': *(.*)$/m', $text, $m)) {
             $r[$f] = trim($m[1]);
@@ -283,6 +284,19 @@ function wra_parse_report($text) {
     $skip = array('all users', 'default', 'default user', 'public');
     if (preg_match_all('/^\[DIR\] +(.+)$/m', $sec('USERS'), $mm)) {
         foreach ($mm[1] as $u) if (!in_array(strtolower(trim($u)), $skip, true)) $r['users'][] = trim($u);
+    }
+    // Usage sections (3.3 and later): name=value lines
+    if (preg_match_all('/^([a-z_]+)=(\S+)$/m', $sec('PERFORMANCE'), $mm, PREG_SET_ORDER)) {
+        foreach ($mm as $m) $r['performance'][$m[1]] = $m[2];
+    }
+    foreach (array('DISK USAGE' => 'disks', 'NETWORK' => 'nics') as $name => $key) {
+        foreach (preg_split('/\n/', $sec($name)) as $line) {
+            if (preg_match_all('/([a-z_]+)=("(?:[^"\\\\]|\\\\.)*"|\S+)/', $line, $kv, PREG_SET_ORDER)) {
+                $item = array();
+                foreach ($kv as $p) $item[$p[1]] = stripcslashes(trim($p[2], '"'));
+                $r[$key][] = $item;
+            }
+        }
     }
     if (preg_match_all('/^Name: (.*?) \| Version: *(.*)$/m', $sec('ALL INSTALLED PROGRAMS'), $mm, PREG_SET_ORDER)) {
         foreach ($mm as $m) $r['apps'][] = array('name' => trim($m[1]), 'version' => trim($m[2]));

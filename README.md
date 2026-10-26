@@ -45,11 +45,44 @@ with these sections:
 | Header | Agent version, hostname, report time (epoch and local) |
 | SERVICE TAG AND BARCODE | Service tag (BIOS serial number, the Dell service tag on Dell computers) and asset tag from WMI |
 | IP ADDRESS | IPv4 addresses of the network adapters that are up |
+| PERFORMANCE | CPU count and CPU use (sampled over 5 seconds), memory total, available and used, commit charge, processes, threads, uptime |
+| DISK USAGE | Size, used, free and percent used of each local fixed drive |
+| NETWORK | Per adapter that is up: link speed, bytes, packets, errors and discards received and sent (totals since the adapter came up) |
 | USERS | Profile folders in `C:\Users` |
 | ALL INSTALLED PROGRAMS | Name and version of every program in the 64-bit and 32-bit uninstall registry keys |
 | WINDOWS DEFENDER ALERTS | Critical, error and warning events from the Defender event log for the last 30 days |
 | INSTALLED WINDOWS PATCHES | Windows Update installation history |
 | HOT FIXES | Installed hotfixes from WMI (`Win32_QuickFixEngineering`) |
+
+The PERFORMANCE, DISK USAGE and NETWORK sections are `name=value` lines
+for trend graphs, for example in the DataReel System Monitor (DRSM). The
+names match the DRSM Linux metrics where there is one:
+
+```
+PERFORMANCE:
+cpu_count=4
+cpu_used_pct=7.2
+mem_total_mb=16364
+mem_available_mb=12307
+mem_used_pct=24.8
+commit_limit_mb=17388
+commit_used_mb=3740
+process_count=184
+thread_count=1937
+uptime_seconds=11230
+END PERFORMANCE
+
+DISK USAGE:
+drive=C: size_mb=510963 used_mb=108062 free_mb=402901 used_pct=21.1
+END DISK USAGE
+
+NETWORK:
+adapter="Ethernet" if_index=10 speed_mbps=1000 rx_bytes=91234664 tx_bytes=37097265 rx_packets=82036 tx_packets=23540 rx_errors=0 tx_errors=0 rx_discards=0 tx_discards=0
+END NETWORK
+```
+
+The network counters are running totals: take the difference between two
+reports for a rate. Idle virtual adapters with no traffic are left out.
 
 The service sends a new report every 15 minutes by default
 (`report_interval_minutes` in `drra.ini`, or `/INTERVAL=` in setup).
