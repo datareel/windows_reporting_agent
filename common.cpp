@@ -521,7 +521,10 @@ int UploadFile(const AgentConfig &cfg, const std::string& input_fname, const std
 
   // Register the agent certificate before sending anything. The server
   // must approve it, either by an admin or with the enrollment token.
-  std::string approved_state = "approved " + id.key_fingerprint;
+  // The state names the key and the server, so a new key or a different
+  // server (host, port or register page) means registering again
+  std::string server_id = cfg.server_host + ":" + std::to_string(cfg.server_port) + cfg.register_path;
+  std::string approved_state = "approved " + id.key_fingerprint + " " + server_id;
   if(ReadRegistrationState(cfg) != approved_state) {
     std::string status;
     if(RegisterAgent(cfg, id, status, output_str) != 0) {
@@ -529,7 +532,7 @@ int UploadFile(const AgentConfig &cfg, const std::string& input_fname, const std
       return -1;
     }
     if(status != "approved") {
-      WriteRegistrationState(cfg, status + " " + id.key_fingerprint);
+      WriteRegistrationState(cfg, status + " " + id.key_fingerprint + " " + server_id);
       output_str += "ERROR - Report not sent, this agent is " + status + " on the server. "
 	"Approve host " + id.hostname + " with key fingerprint " + id.key_fingerprint + " on the admin page";
       FreeAgentIdentity(id);

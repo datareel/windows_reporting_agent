@@ -155,7 +155,12 @@ var
   UseHttps: Boolean;
 begin
   Ini := IniPath(WizardDirValue);
-  UseHttps := (GetIniInt('https', 'use_https', 1, 0, 1, Ini) = 1) and not HasSwitch('/HTTP');
+  // A new /SERVER= on the command line means HTTPS unless /HTTP is given;
+  // otherwise keep the setting of an existing install
+  if ExpandConstant('{param:SERVER|}') <> '' then
+    UseHttps := not HasSwitch('/HTTP')
+  else
+    UseHttps := (GetIniInt('https', 'use_https', 1, 0, 1, Ini) = 1) and not HasSwitch('/HTTP');
   ServerPage.Values[0] := ParamOrDefault('SERVER', GetIniString('https', 'host', 'reports.example.com', Ini));
   ServerPage.Values[1] := ParamOrDefault('PORT', GetIniString('https', 'port', '443', Ini));
   ServerPage.Values[2] := ParamOrDefault('URLPATH', UrlPathFromIni(Ini));
