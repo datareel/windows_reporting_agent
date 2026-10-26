@@ -206,8 +206,10 @@ def build_report(rng, host, scen, report_time, users):
     lines.append("mem_total_mb=%d" % mem_total)
     lines.append("mem_available_mb=%d" % mem_avail)
     lines.append("mem_used_pct=%.1f" % (100.0 * (mem_total - mem_avail) / mem_total))
-    lines.append("commit_limit_mb=%d" % (mem_total + 4096))
-    lines.append("commit_used_mb=%d" % int((mem_total - mem_avail) * 1.3))
+    commit_limit = mem_total + 4096
+    # Windows never reports more commit charge than its limit
+    lines.append("commit_limit_mb=%d" % commit_limit)
+    lines.append("commit_used_mb=%d" % min(int((mem_total - mem_avail) * 1.3), int(commit_limit * 0.98)))
     lines.append("process_count=%d" % rng.randint(140, 320))
     lines.append("thread_count=%d" % rng.randint(1800, 4200))
     lines.append("uptime_seconds=%d" % rng.randint(3600, 40 * 86400))
