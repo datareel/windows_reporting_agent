@@ -2,7 +2,7 @@
 
 These files add Windows hosts to the DataReel System Monitor (DRSM).
 DRSM reads the report each agent sends (by HTTPS upload, CIFS share or
-SCP) and runs four checks on it, without ever connecting to the
+SCP) and runs five checks on it, without ever connecting to the
 Windows host:
 
 | Plugin | Checks |
