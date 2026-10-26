@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Generate a sample fleet of DataReel Reporting Agent reports with made up
-# hostnames, users, service tags and addresses, for the live demo, for
+# hostnames, test users (testuser01, ...), service tags and addresses, for the live demo, for
 # testing the status page and the DRSM plugins, and for screenshots.
 #
 # The reports use the exact layout the agent writes. The fleet covers the
@@ -42,10 +42,9 @@ SCENARIOS = [
     ("bad", 0.02),             # report without a time stamp
 ]
 
-SURNAMES = ["smith", "garcia", "chen", "patel", "nguyen", "okafor", "muller", "rossi", "kim", "silva",
-            "jones", "brown", "lopez", "khan", "wilson", "taylor", "moore", "clark", "lewis", "walker",
-            "young", "hall", "allen", "king", "wright", "scott", "green", "baker", "adams", "nelson"]
-INITIALS = "abcdefghjklmnprstw"
+# User profiles are testuser01, testuser02, ... so no sample report can
+# carry a real person's name
+USER_PREFIX = "testuser"
 
 BASE_APPS = [
     ("Microsoft 365 Apps for enterprise - en-us", "16.0.19328.20190"),
@@ -238,7 +237,7 @@ def build_report(rng, host, scen, report_time, users):
             t = report_time - rng.randint(1, 20) * 86400 - rng.randint(0, 80000)
             common = [("Product Name", "Microsoft Defender Antivirus"), ("Product Version", "4.18.26090.9"),
                       ("Threat Name", threat[0]), ("Severity Name", threat[1]), ("Category Name", threat[2]),
-                      ("Path", "file:_" + threat[3] % user), ("Detection User", "EXAMPLE\\%s" % user)]
+                      ("Path", "file:_" + threat[3] % user), ("Detection User", "WORKGROUP\\%s" % user)]
             lines.append(defender_event(rng, host, t, 1116, 3, common + [("Action Name", "Not Applicable")]))
             lines.append("")
             if rng.random() < 0.6:
@@ -328,6 +327,7 @@ def main():
     hosts = make_hostnames(rng, args.count)
     scenarios = pick_scenarios(rng, hosts)
     summary = {"generated": args.now, "seed": args.seed, "hosts": []}
+    next_user = 1
 
     for host in hosts:
         scen = scenarios[host]
@@ -337,7 +337,9 @@ def main():
             report_time = args.now - rng.randint(16, 60) * 86400 - rng.randint(0, 80000)
         else:
             report_time = args.now - rng.randint(60, 45 * 60)   # within the last 45 minutes
-        users = [rng.choice(INITIALS) + rng.choice(SURNAMES) for _ in range(1 if host.startswith("lt-") else rng.randint(1, 3))]
+        n_users = 1 if host.startswith("lt-") else rng.randint(1, 3)
+        users = ["%s%02d" % (USER_PREFIX, next_user + i) for i in range(n_users)]
+        next_user += n_users
         path = os.path.join(args.out, "%s_windows_report_agent.txt" % host)
         entry = {"hostname": host, "scenario": scen}
         if scen == "empty":
