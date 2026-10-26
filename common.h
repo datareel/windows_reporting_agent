@@ -24,6 +24,8 @@ struct AgentConfig {
     bool ignore_cert_revocation;    // ignore_cert_revocation
     // [cifs]
     std::string cifs_share;         // share
+    std::string cifs_user;          // user: share login for sites without a domain,
+                                    // the password is in data_dir (set-cifs-password)
     // [scp]
     std::string scp_host;           // host
     int scp_port;                   // port
@@ -59,6 +61,8 @@ void SetDefaultAgentConfig(AgentConfig &cfg);
 int LoadAgentConfig(AgentConfig &cfg, std::string &output);
 std::string JoinPath(const std::string &dir, const std::string &name);
 int DeliverReport(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str);
+int SetCifsPassword(const AgentConfig &cfg, const std::string &password, std::string &output);
+int ReadCifsPassword(const AgentConfig &cfg, std::string &password, std::string &output);
 int CopyToShare(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str);
 int ScpFile(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str);
 int RunCommand(const std::string &cmdline, DWORD timeout_ms, std::string &output);

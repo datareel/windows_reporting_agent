@@ -58,6 +58,7 @@ int upload_agent_report(const AgentConfig &cfg, std::string &output);
 int get_all_patches(std::string &output);
 
 VOID SvcInstall(void);
+int SetCifsPasswordCommand(const char *password);
 VOID WINAPI SvcCtrlHandler( DWORD ); 
 VOID WINAPI SvcMain( DWORD, LPTSTR * ); 
 VOID ReportSvcStatus( DWORD, DWORD, DWORD );
@@ -78,10 +79,17 @@ int __cdecl _tmain(int argc, TCHAR *argv[])
 { 
   // If command-line parameter is "install", install the service. 
   // Otherwise, the service is probably being started by the SCM.
-  if( lstrcmpi( argv[1], TEXT("install")) == 0 )
+  if( argc > 1 && lstrcmpi( argv[1], TEXT("install")) == 0 )
     {
       SvcInstall();
       return 0;
+    }
+
+  // set-cifs-password [password]: save the [cifs] user's password,
+  // encrypted, in data_dir. Asks for it when it is not given.
+  if( argc > 1 && lstrcmpi( argv[1], TEXT("set-cifs-password")) == 0 )
+    {
+      return SetCifsPasswordCommand(argc > 2 ? argv[2] : NULL);
     }
   
   // TO_DO: Add any additional services for the process to this table.
@@ -99,6 +107,48 @@ int __cdecl _tmain(int argc, TCHAR *argv[])
       SvcReportEvent(TEXT("StartServiceCtrlDispatcher")); 
     } 
 } 
+
+//
+// Purpose:
+//   Saves the CIFS share password for [cifs] user, run by an administrator
+//
+// Parameters:
+//   password - the password, or NULL to ask for it without echo
+//
+// Return value:
+//   0 on success
+//
+int SetCifsPasswordCommand(const char *password)
+{
+  AgentConfig cfg;
+  std::string output;
+  LoadAgentConfig(cfg, output);
+
+  std::string pw;
+  if(password != NULL) {
+    pw = password;
+  }
+  else {
+    // Read the password with echo turned off
+    HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode = 0;
+    BOOL console = GetConsoleMode(hIn, &mode);
+    if(console) SetConsoleMode(hIn, mode & ~ENABLE_ECHO_INPUT);
+    printf("Password for %s on %s: ", cfg.cifs_user.c_str(), cfg.cifs_share.c_str());
+    std::getline(std::cin, pw);
+    if(console) SetConsoleMode(hIn, mode);
+    printf("\n");
+  }
+  if(pw.empty()) {
+    printf("ERROR - No password given\n");
+    return 1;
+  }
+
+  int rv = SetCifsPassword(cfg, pw, output);
+  SecureZeroMemory(&pw[0], pw.length());
+  printf("%s", output.c_str());
+  return rv == 0 ? 0 : 1;
+}
 
 //
 // Purpose: 

@@ -11,6 +11,14 @@
 ;       /SERVER=reports.example.com /PORT=443 /URLPATH=/windows/upload
 ;       /TOKEN=<enrollment token> [/HTTP]
 ;
+; Delivery to a file share (CIFS) instead of, or next to, HTTPS:
+;
+;       /METHODS=cifs /CIFSSHARE=\\fileserver\reports
+;       [/CIFSUSER=<share user> /CIFSPASS=<password>]
+;
+; /CIFSUSER and /CIFSPASS are for shares outside a Windows domain. The
+; password is stored encrypted (DPAPI) in C:\ProgramData\WindowsReportAgent.
+;
 ; /URLPATH is the web path of the folder that holds upload.php and
 ; register.php. /HTTP turns off HTTPS (test servers only). Settings not
 ; given keep the value from an existing install, or the default.
@@ -232,6 +240,19 @@ begin
     else
       SetIniString('https', 'use_https', '0', Ini);
     Log('Wrote server settings to ' + Ini);
+
+    // Delivery methods and the file share, from the command line only
+    if ExpandConstant('{param:METHODS|}') <> '' then
+      SetIniString('delivery', 'methods', ExpandConstant('{param:METHODS|}'), Ini);
+    if ExpandConstant('{param:CIFSSHARE|}') <> '' then
+      SetIniString('cifs', 'share', ExpandConstant('{param:CIFSSHARE|}'), Ini);
+    if ExpandConstant('{param:CIFSUSER|}') <> '' then
+      SetIniString('cifs', 'user', ExpandConstant('{param:CIFSUSER|}'), Ini);
+    if ExpandConstant('{param:CIFSPASS|}') <> '' then begin
+      Exec(ExpandConstant('{app}\windows_reporting_agent_svc.exe'),
+           'set-cifs-password "' + ExpandConstant('{param:CIFSPASS|}') + '"', '', SW_HIDE, ewWaitUntilTerminated, RC);
+      Log('set-cifs-password returned ' + IntToStr(RC));
+    end;
 
     // The [Run] entries that create or update the service have already run
     WizardForm.StatusLabel.Caption := 'Starting the service...';

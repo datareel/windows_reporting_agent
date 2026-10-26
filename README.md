@@ -226,6 +226,7 @@ on the next cycle without a restart. Any setting left out uses its default.
 | https | ignore_cert_revocation | `1` | Skip the CRL/OCSP check, for networks that block CRL servers (WinINet error 12057) |
 | https | enrollment_token | (empty) | Token from the server's `server.ini` for automatic approval |
 | cifs | share | (empty) | UNC path such as `\\fileserver\reports` |
+| cifs | user | (empty) | Share login for sites without a Windows domain; save its password with `set-cifs-password` |
 | scp | host, port, user | (empty), `22`, (empty) | SSH server and account |
 | scp | key_file | `C:\ProgramData\WindowsReportAgent\id_ed25519` | Private key with no passphrase |
 | scp | remote_dir | (empty) | Directory on the SSH server |
@@ -244,7 +245,21 @@ on the next cycle without a restart. Any setting left out uses its default.
 
 The service runs as LocalSystem, so on a domain it connects to the share
 as the computer account (`DOMAIN\HOSTNAME$`). Give the computer accounts,
-or the Domain Computers group, write access to the share and folder. The
+or the Domain Computers group, write access to the share and folder.
+
+Without a domain (a Samba server, a NAS, a workgroup), give the agent a
+share login: set `user=` in `[cifs]` and save the password from an
+administrator command prompt:
+
+```
+"C:\Program Files\WindowsReportAgent\windows_reporting_agent_svc.exe" set-cifs-password
+```
+
+It asks for the password and stores it encrypted with Windows DPAPI in
+`C:\ProgramData\WindowsReportAgent\cifs_password.dat`, which only SYSTEM
+and Administrators can read. For unattended installs use the setup
+switches `/METHODS=cifs /CIFSSHARE=\\server\share /CIFSUSER=<user>
+/CIFSPASS=<password>`. The
 report is written under a temporary name and then renamed, so a reader
 never sees a partial file. CIFS and SCP deliveries do not use the
 certificate registration: access is controlled by the share permissions

@@ -18,6 +18,8 @@
 #include <winevt.h>
 #include <iphlpapi.h>
 #include <ws2tcpip.h>
+#include <winnetwk.h>
+#include <wincrypt.h>
 
 // C++ STD lib includes
 #include <iostream>
@@ -36,6 +38,8 @@
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "iphlpapi.lib")
 #pragma comment(lib, "user32.lib")
+#pragma comment(lib, "mpr.lib")
+#pragma comment(lib, "crypt32.lib")
 
 // Windows Update Agent (WUA) API
 #include <wuapi.h>
@@ -158,6 +162,7 @@ void SetDefaultAgentConfig(AgentConfig &cfg)
   cfg.use_https = true;
   cfg.ignore_cert_revocation = true;
   cfg.cifs_share.clear();
+  cfg.cifs_user.clear();
   cfg.scp_host.clear();
   cfg.scp_port = 22;
   cfg.scp_user.clear();
@@ -257,6 +262,7 @@ int LoadAgentConfig(AgentConfig &cfg, std::string &output)
   cfg.ignore_cert_revocation = ReadIniInt("https", "ignore_cert_revocation", cfg.ignore_cert_revocation ? 1 : 0, ini_path) != 0;
 
   cfg.cifs_share = ReadIniString("cifs", "share", cfg.cifs_share, ini_path);
+  cfg.cifs_user = ReadIniString("cifs", "user", cfg.cifs_user, ini_path);
 
   cfg.scp_host = ReadIniString("scp", "host", cfg.scp_host, ini_path);
   cfg.scp_port = ReadIniInt("scp", "port", cfg.scp_port, ini_path);
@@ -338,14 +344,112 @@ int DeliverReport(const AgentConfig &cfg, const std::string& input_fname, const 
   return error_level;
 }
 
+#define CIFS_PASSWORD_FILE "cifs_password.dat"
+
+// The share password is encrypted with DPAPI for this computer and kept in
+// data_dir, which the installer limits to SYSTEM and Administrators
+int SetCifsPassword(const AgentConfig &cfg, const std::string &password, std::string &output)
+{
+  if(!CreateDirTree(cfg.data_dir)) {
+    output += "ERROR - Could not create data directory " + cfg.data_dir + "\n";
+    return -1;
+  }
+  DATA_BLOB in = { (DWORD)password.length(), (BYTE *)password.data() };
+  DATA_BLOB out = { 0, NULL };
+  if(!CryptProtectData(&in, L"WindowsReportAgent CIFS password", NULL, NULL, NULL,
+		       CRYPTPROTECT_LOCAL_MACHINE | CRYPTPROTECT_UI_FORBIDDEN, &out)) {
+    output += "ERROR - Could not encrypt the password: " + GetLastErrorAsString() + "\n";
+    return -1;
+  }
+  std::string fname = JoinPath(cfg.data_dir, CIFS_PASSWORD_FILE);
+  HANDLE hFile = CreateFileA(fname.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  if(hFile == INVALID_HANDLE_VALUE) {
+    LocalFree(out.pbData);
+    output += "ERROR - Could not write " + fname + ": " + GetLastErrorAsString() + "\n";
+    return -1;
+  }
+  DWORD written = 0;
+  BOOL ok = WriteFile(hFile, out.pbData, out.cbData, &written, NULL);
+  CloseHandle(hFile);
+  LocalFree(out.pbData);
+  if(!ok || written != out.cbData) {
+    output += "ERROR - Could not write " + fname + "\n";
+    return -1;
+  }
+  output += "Saved the encrypted share password in " + fname + "\n";
+  return 0;
+}
+
+int ReadCifsPassword(const AgentConfig &cfg, std::string &password, std::string &output)
+{
+  password.clear();
+  std::string fname = JoinPath(cfg.data_dir, CIFS_PASSWORD_FILE);
+  HANDLE hFile = CreateFileA(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+  if(hFile == INVALID_HANDLE_VALUE) {
+    output = "ERROR - No share password, run: windows_reporting_agent_svc.exe set-cifs-password";
+    return -1;
+  }
+  std::vector<BYTE> blob;
+  BYTE buffer[1024];
+  DWORD bytesRead = 0;
+  while(ReadFile(hFile, buffer, sizeof(buffer), &bytesRead, NULL) && bytesRead > 0) {
+    blob.insert(blob.end(), buffer, buffer + bytesRead);
+  }
+  CloseHandle(hFile);
+  DATA_BLOB in = { (DWORD)blob.size(), blob.data() };
+  DATA_BLOB out = { 0, NULL };
+  if(!CryptUnprotectData(&in, NULL, NULL, NULL, NULL, CRYPTPROTECT_UI_FORBIDDEN, &out)) {
+    output = "ERROR - Could not decrypt the share password in " + fname + ": " + GetLastErrorAsString();
+    return -1;
+  }
+  password.assign((char *)out.pbData, out.cbData);
+  SecureZeroMemory(out.pbData, out.cbData);
+  LocalFree(out.pbData);
+  return 0;
+}
+
+// \\server\share\folder -> \\server\share
+static std::string ShareRoot(const std::string &unc)
+{
+  if(unc.length() < 3 || unc[0] != '\\' || unc[1] != '\\') return unc;
+  size_t server_end = unc.find('\\', 2);
+  if(server_end == std::string::npos) return unc;
+  size_t share_end = unc.find('\\', server_end + 1);
+  return (share_end == std::string::npos) ? unc : unc.substr(0, share_end);
+}
+
 int CopyToShare(const AgentConfig &cfg, const std::string& input_fname, const std::string& upload_fname, std::string& output_str)
 {
   // The service runs as LocalSystem, so on a domain it reaches the share
   // as the computer account (DOMAIN\HOSTNAME$). Grant that account, or
-  // Domain Computers, write access to the share.
+  // Domain Computers, write access to the share. Without a domain, set
+  // [cifs] user and save its password with set-cifs-password.
   if(cfg.cifs_share.empty()) {
     output_str = "ERROR - No share set in the [cifs] section";
     return -1;
+  }
+
+  std::string root = ShareRoot(cfg.cifs_share);
+  bool connected = false;
+  if(!cfg.cifs_user.empty()) {
+    std::string password;
+    if(ReadCifsPassword(cfg, password, output_str) != 0) {
+      return -1;
+    }
+    // Drop a connection left with other credentials (error 1219)
+    WNetCancelConnection2A(root.c_str(), 0, TRUE);
+    NETRESOURCEA nr;
+    memset(&nr, 0, sizeof(nr));
+    nr.dwType = RESOURCETYPE_DISK;
+    nr.lpRemoteName = (LPSTR)root.c_str();
+    DWORD rc = WNetAddConnection2A(&nr, password.c_str(), cfg.cifs_user.c_str(), 0);
+    SecureZeroMemory(&password[0], password.length());
+    if(rc != NO_ERROR) {
+      SetLastError(rc);
+      output_str = "ERROR - Could not connect to " + root + " as " + cfg.cifs_user + ": " + GetLastErrorAsString();
+      return -1;
+    }
+    connected = true;
   }
 
   // Copy to a temporary name first, then rename, so a reader on the
@@ -353,18 +457,24 @@ int CopyToShare(const AgentConfig &cfg, const std::string& input_fname, const st
   std::string dest_fname = JoinPath(cfg.cifs_share, upload_fname);
   std::string tmp_fname = dest_fname + ".tmp";
 
+  int error_level = 0;
   if(!CopyFileA(input_fname.c_str(), tmp_fname.c_str(), FALSE)) {
     output_str = "ERROR - Could not copy report to " + tmp_fname + ": " + GetLastErrorAsString();
-    return -1;
+    error_level = -1;
   }
-  if(!MoveFileExA(tmp_fname.c_str(), dest_fname.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+  else if(!MoveFileExA(tmp_fname.c_str(), dest_fname.c_str(), MOVEFILE_REPLACE_EXISTING)) {
     output_str = "ERROR - Could not rename " + tmp_fname + " to " + dest_fname + ": " + GetLastErrorAsString();
     DeleteFileA(tmp_fname.c_str());
-    return -1;
+    error_level = -1;
+  }
+  else {
+    output_str = "Copied report to " + dest_fname;
   }
 
-  output_str = "Copied report to " + dest_fname;
-  return 0;
+  if(connected) {
+    WNetCancelConnection2A(root.c_str(), 0, TRUE);
+  }
+  return error_level;
 }
 
 static std::string ExpandEnv(const std::string &str)
