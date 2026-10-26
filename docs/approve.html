@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Approve computers | Windows Reporting Agent Documentation</title>
+<meta name="description" content="Approve, revoke and delete Windows Reporting Agent computers on the admin page.">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="docs.css">
+<script src="docs.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="tool icon-only menu-btn" type="button" data-action="menu" aria-label="Menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="">Windows Reporting Agent <small>Documentation</small></a>
+    <span class="spacer"></span>
+    
+    <a class="tool hide-sm" href="https://datareel.com/downloads/windows_reporting_agent/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Downloads</span></a>
+    <button class="tool icon-only" type="button" data-action="theme" aria-label="Switch light or dark theme"><svg class="icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="icon moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html" class="active" aria-current="page">Approve computers</a><div class="toc"><a href="#page">The admin page</a><a href="#states">States</a><a href="#actions">Actions</a><a href="#reinstall">Reinstalled computers</a></div><a href="configuration.html">Configuration</a><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+  </nav>
+  <main class="content" id="main">
+<h1>Approve computers</h1>
+<p class="lead">A computer only sends reports after the server approves its certificate. Approve it on the admin page, or automatically with an <a href="server.html#token">enrollment token</a>.</p>
+
+<h2 id="page">The admin page</h2>
+<p>Open <code>admin.php</code> in the upload pages folder, for example <code>https://reports.example.com/windows_reporting_agent/upload/admin.php</code>, and log in. It lists every registered computer with its status, key fingerprint, registration and approval times, last report and last address, and the reports on disk that have no registration.</p>
+
+<h2 id="states">States</h2>
+<div class="table-wrap"><table><thead><tr><th>Status</th><th>Meaning</th></tr></thead><tbody><tr><td><code>pending</code></td><td>Registered, waiting for an admin. Its reports are refused.</td></tr><tr><td><code>approved</code></td><td>Reports signed with its key are accepted.</td></tr><tr><td><code>revoked</code></td><td>Its reports are refused. It stays listed until deleted.</td></tr></tbody></table></div>
+
+<h2 id="actions">Actions</h2>
+<ul>
+  <li><strong>Approve</strong> a pending or revoked computer. Check first that the key fingerprint matches the one in <code>C:\ProgramData\WindowsReportAgent\windows_report_agent.log</code> on that computer, so you know the request came from it.</li>
+  <li><strong>Revoke</strong> a computer that was lost, stolen or retired.</li>
+  <li><strong>Delete registration</strong> to forget the computer. It registers again with its next report.</li>
+  <li><strong>Delete report</strong> to remove its saved report file.</li>
+</ul>
+
+<h2 id="reinstall">Reinstalled computers</h2>
+<p>Each hostname can only be registered with one key. When Windows is reinstalled, the computer gets a new key and its registration is refused with <code>key_mismatch</code>. Delete its old registration on the admin page, and it registers again on its next report. Approve it again, or let the enrollment token do it.</p>
+<nav class="pager" aria-label="Previous and next page"><a class="card prev" href="server.html"><small>Previous</small>Set up the report server</a><a class="card next" href="configuration.html"><small>Next</small>Configuration</a></nav>
+  </main>
+</div>
+<footer class="foot">Windows Reporting Agent 3.2 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+</body>
+</html>

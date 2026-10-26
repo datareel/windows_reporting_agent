@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install the agent | Windows Reporting Agent Documentation</title>
+<meta name="description" content="Install the Windows Reporting Agent with the setup wizard, silently with Group Policy or PDQ, upgrade it and uninstall it.">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="docs.css">
+<script src="docs.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="tool icon-only menu-btn" type="button" data-action="menu" aria-label="Menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="">Windows Reporting Agent <small>Documentation</small></a>
+    <span class="spacer"></span>
+    
+    <a class="tool hide-sm" href="https://datareel.com/downloads/windows_reporting_agent/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Downloads</span></a>
+    <button class="tool icon-only" type="button" data-action="theme" aria-label="Switch light or dark theme"><svg class="icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="icon moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html" class="active" aria-current="page">Install the agent</a><div class="toc"><a href="#requirements">Requirements</a><a href="#setup">Run the setup</a><a href="#silent">Unattended installs</a><a href="#check">Check it works</a><a href="#upgrade">Upgrade</a><a href="#uninstall">Uninstall</a></div><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+  </nav>
+  <main class="content" id="main">
+<h1>Install the agent</h1>
+<p class="lead">Run the setup on each computer, or push it out silently with the settings on the command line. Set up the <a href="server.html">report server</a> first so you know its address.</p>
+
+<h2 id="requirements">Requirements</h2>
+<div class="table-wrap"><table><thead><tr><th>Item</th><th>Needs</th></tr></thead><tbody><tr><td>Windows</td><td>Windows 10 or 11, or Windows Server 2016 or later, 64-bit</td></tr><tr><td>Rights</td><td>An administrator account to install. The service runs as LocalSystem.</td></tr><tr><td>Network</td><td>HTTPS access to the report server, or a file share or SSH server for the other delivery methods</td></tr><tr><td>SCP delivery</td><td>The Windows OpenSSH client, installed by default on Windows 10 1809 and later</td></tr></tbody></table></div>
+
+<h2 id="setup">Run the setup</h2>
+<p>Download <code>windows_reporting_agent_setup_3.2.exe</code> from the <a href="https://datareel.com/downloads/windows_reporting_agent/">downloads page</a> and run it as an administrator. After the license and install folder pages it asks for the report server:</p>
+<div class="table-wrap"><table><thead><tr><th>Field</th><th>Example</th><th>Notes</th></tr></thead><tbody><tr><td>Server host name</td><td><code>reports.example.com</code></td><td>The web server that runs the PHP pages</td></tr><tr><td>Port</td><td><code>443</code></td><td>443 for HTTPS</td></tr><tr><td>Web path of the upload pages folder</td><td><code>/windows_reporting_agent/upload</code></td><td>The folder that holds <code>upload.php</code> and <code>register.php</code></td></tr><tr><td>Enrollment token</td><td>(from <code>server.ini</code>)</td><td>Leave blank to approve the computer on the admin page</td></tr><tr><td>Connection security</td><td>HTTPS</td><td>Plain HTTP is only for a test server</td></tr></tbody></table></div>
+<p>The setup installs to <code>C:\Program Files\WindowsReportAgent</code>, writes the settings to <code>windows_reporting_agent.ini</code> there, creates the <code>WindowsReportAgent</code> service (automatic start, restarted if it stops) and starts it. The first report goes out right away. It also limits <code>C:\ProgramData\WindowsReportAgent</code>, where the agent keeps its certificate, report and log, to SYSTEM and Administrators.</p>
+
+<h2 id="silent">Unattended installs</h2>
+<p>For Group Policy, PDQ Deploy, a login script or any other deployment tool, pass the settings on the command line:</p>
+<pre><code>windows_reporting_agent_setup_3.2.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
+    /SERVER=reports.example.com /PORT=443 /URLPATH=/windows_reporting_agent/upload ^
+    /TOKEN=&lt;enrollment token&gt;</code></pre>
+<div class="table-wrap"><table><thead><tr><th>Switch</th><th>Meaning</th></tr></thead><tbody><tr><td><code>/SERVER=</code></td><td>Report server host name</td></tr><tr><td><code>/PORT=</code></td><td>Port, 443 for HTTPS</td></tr><tr><td><code>/URLPATH=</code></td><td>Web path of the folder with <code>upload.php</code> and <code>register.php</code></td></tr><tr><td><code>/TOKEN=</code></td><td>Enrollment token for automatic approval</td></tr><tr><td><code>/HTTP</code></td><td>Use plain HTTP (test servers only)</td></tr><tr><td><code>/LOG=C:\path\setup.log</code></td><td>Keep a setup log</td></tr></tbody></table></div>
+<div class="callout"><p>Settings you leave out keep the values of an existing install, so a new version can be pushed out with only <code>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART</code>.</p></div>
+
+<h2 id="check">Check it works</h2>
+<p>Open <code>C:\ProgramData\WindowsReportAgent\windows_report_agent.log</code> as an administrator. After the first report it shows one line per delivery method:</p>
+<pre><code><span class="c">Waiting for approval:</span>
+[https] Registration status from server: pending
+ERROR - Report not sent, this agent is pending on the server. Approve host
+pc-0142 with key fingerprint 8d3f5723...3aa16 on the admin page
+
+<span class="c">Approved and sent:</span>
+[https] Upload successful
+STATUS: ok</code></pre>
+<p>To send a report now instead of waiting for the next cycle, run <code>send_test_report.exe</code> from an administrator command prompt in the install folder. It skips the patch and hotfix sections, which are slow to collect.</p>
+
+<h2 id="upgrade">Upgrade</h2>
+<p>Run the new setup over the old one, interactively or with <code>/VERYSILENT</code>. It stops the service, replaces the programs, keeps <code>windows_reporting_agent.ini</code> and starts the service again. The computer keeps its key, so it does not need to be approved again.</p>
+
+<h2 id="uninstall">Uninstall</h2>
+<p>Use <strong>Settings &gt; Apps</strong>, or run <code>unins000.exe /VERYSILENT</code> in the install folder. The service and programs are removed. The INI file and <code>C:\ProgramData\WindowsReportAgent</code> are kept, so a reinstall reuses the same key and settings. Delete them by hand to remove the agent completely, and delete the computer's registration on the <a href="approve.html">admin page</a>.</p>
+<nav class="pager" aria-label="Previous and next page"><a class="card prev" href="index.html"><small>Previous</small>Overview</a><a class="card next" href="server.html"><small>Next</small>Set up the report server</a></nav>
+  </main>
+</div>
+<footer class="foot">Windows Reporting Agent 3.2 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+</body>
+</html>

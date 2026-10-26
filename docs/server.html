@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set up the report server | Windows Reporting Agent Documentation</title>
+<meta name="description" content="Install the Windows Reporting Agent PHP pages on Apache, set the permissions, protect the admin page and set the enrollment token.">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="docs.css">
+<script src="docs.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="tool icon-only menu-btn" type="button" data-action="menu" aria-label="Menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="">Windows Reporting Agent <small>Documentation</small></a>
+    <span class="spacer"></span>
+    
+    <a class="tool hide-sm" href="https://datareel.com/downloads/windows_reporting_agent/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Downloads</span></a>
+    <button class="tool icon-only" type="button" data-action="theme" aria-label="Switch light or dark theme"><svg class="icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="icon moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html" class="active" aria-current="page">Set up the report server</a><div class="toc"><a href="#requirements">Requirements</a><a href="#install">Install the pages</a><a href="#permissions">Permissions</a><a href="#apache">Apache</a><a href="#token">Enrollment token</a><a href="#shared">Shared hosting</a><a href="#https">HTTPS</a></div><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+  </nav>
+  <main class="content" id="main">
+<h1>Set up the report server</h1>
+<p class="lead">The server side is four PHP files and a data directory. <code>install_server.sh</code> puts them in place. Plan on about 15 minutes.</p>
+<div class="callout"><p>In the examples, <code>$</code> commands run as your own account and <code>#</code> commands run as root.</p></div>
+
+<h2 id="requirements">Requirements</h2>
+<div class="table-wrap"><table><thead><tr><th>Item</th><th>Needs</th></tr></thead><tbody><tr><td>Web server</td><td>Apache with <code>AllowOverride All</code> (or <code>FileInfo AuthConfig Limit</code>) for the pages folder</td></tr><tr><td>PHP</td><td>PHP 7.4 or later, PHP 8 supported, with the OpenSSL extension</td></tr><tr><td>TLS</td><td>A certificate the Windows computers trust, for example from Let's Encrypt</td></tr></tbody></table></div>
+
+<h2 id="install">Install the pages</h2>
+<p>The pages are in the <code>php</code> folder of the source package. The script only shows what it would do until you add <code>--apply</code>:</p>
+<pre><code><span class="p">$ </span>cd windows_reporting_agent/php
+<span class="p">$ </span>./install_server.sh /var/www/html/windows_reporting_agent /var/lib/windows_reporting_agent
+<span class="r"># </span>./install_server.sh --apply --admin-user admin \
+      /var/www/html/windows_reporting_agent /var/lib/windows_reporting_agent</code></pre>
+<div class="table-wrap"><table><thead><tr><th>Argument</th><th>Gets</th></tr></thead><tbody><tr><td><code>WEB_DIR</code></td><td>An <code>upload</code> folder with <code>register.php</code>, <code>upload.php</code>, <code>admin.php</code>, <code>wra_lib.php</code> and an <code>.htaccess</code> file</td></tr><tr><td><code>DATA_DIR</code></td><td><code>server.ini</code>, the agent registrations, replay protection data, <code>admin.htpasswd</code>, and the reports in <code>reports/</code></td></tr></tbody></table></div>
+<p>The script never overwrites an existing <code>server.ini</code> or <code>admin.htpasswd</code>, so it is safe to run again to update the pages. <code>--admin-user</code> creates the admin login and asks for its password.</p>
+
+<h2 id="permissions">Permissions</h2>
+<p>The web server user must be able to write to <code>DATA_DIR</code>:</p>
+<pre><code><span class="r"># </span>setfacl -R -m u:apache:rwX -m d:u:apache:rwX /var/lib/windows_reporting_agent</code></pre>
+<p>With SELinux enforcing (RHEL, Rocky, Alma, Fedora), also label it for writing:</p>
+<pre><code><span class="r"># </span>semanage fcontext -a -t httpd_sys_rw_content_t "/var/lib/windows_reporting_agent(/.*)?"
+<span class="r"># </span>restorecon -R /var/lib/windows_reporting_agent</code></pre>
+<p>On Debian and Ubuntu the web server user is <code>www-data</code>.</p>
+
+<h2 id="apache">Apache</h2>
+<p>The generated <code>upload/.htaccess</code> does three things:</p>
+<pre><code>SetEnv WRA_SERVER_INI /var/lib/windows_reporting_agent/server.ini
+
+&lt;Files "wra_lib.php"&gt;
+    Require all denied
+&lt;/Files&gt;
+
+&lt;Files "admin.php"&gt;
+    AuthType Basic
+    AuthName "Windows Reporting Agent admin"
+    AuthUserFile /var/lib/windows_reporting_agent/admin.htpasswd
+    Require valid-user
+&lt;/Files&gt;</code></pre>
+<p>If you do not allow <code>.htaccess</code> files, put the same lines in a <code>&lt;Directory&gt;</code> block in the Apache configuration. <code>admin.php</code> refuses to run if the web server has not logged the user in, unless you set <code>require_remote_user = 0</code> in <code>server.ini</code>. Add or change admin logins with:</p>
+<pre><code><span class="p">$ </span>htpasswd -B /var/lib/windows_reporting_agent/admin.htpasswd admin</code></pre>
+
+<h2 id="token">Enrollment token</h2>
+<p>Without a token, every new computer waits on the <a href="approve.html">admin page</a> until you approve it. To approve computers automatically, set a long random token in <code>DATA_DIR/server.ini</code> and give the same token to the setup:</p>
+<pre><code><span class="p">$ </span>openssl rand -hex 24
+
+<span class="c">; DATA_DIR/server.ini</span>
+[registration]
+enrollment_token = 6f1c...e9a2
+auto_approve_with_token = 1</code></pre>
+<p>With <code>auto_approve_with_token = 0</code> the token is still checked, but an admin approves each computer. A computer that sends a wrong token is refused. Change the token after a deployment if it may have been seen by others: computers already approved keep working.</p>
+
+<h2 id="shared">Shared hosting</h2>
+<p>On a host such as HostGator where everything is under <code>public_html</code>, put <code>DATA_DIR</code> inside <code>WEB_DIR</code>. The script then adds an <code>.htaccess</code> with <code>Require all denied</code> to it so the reports, registrations and settings cannot be downloaded:</p>
+<pre><code><span class="p">$ </span>./install_server.sh --apply --admin-user admin \
+      ~/public_html/windows_reporting_agent ~/public_html/windows_reporting_agent/data</code></pre>
+<div class="callout warn"><p>Open <code>https://your.site/windows_reporting_agent/data/server.ini</code> in a browser after the install. It must be refused (403). If it downloads, your host does not honor <code>.htaccess</code> there: move <code>DATA_DIR</code> outside <code>public_html</code>.</p></div>
+
+<h2 id="https">HTTPS</h2>
+<p>The agent uses the Windows certificate store to check the server, so the server needs a certificate from a public authority or from your own authority that is deployed to the computers. A self-signed server certificate fails with WinINet error 12175 or 12045. Plain HTTP works for a test server, but the inventory then crosses the network in clear text.</p>
+<nav class="pager" aria-label="Previous and next page"><a class="card prev" href="install.html"><small>Previous</small>Install the agent</a><a class="card next" href="approve.html"><small>Next</small>Approve computers</a></nav>
+  </main>
+</div>
+<footer class="foot">Windows Reporting Agent 3.2 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+</body>
+</html>

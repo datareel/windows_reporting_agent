@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What's new | Windows Reporting Agent Documentation</title>
+<meta name="description" content="Windows Reporting Agent release history.">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="docs.css">
+<script src="docs.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="tool icon-only menu-btn" type="button" data-action="menu" aria-label="Menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="">Windows Reporting Agent <small>Documentation</small></a>
+    <span class="spacer"></span>
+    
+    <a class="tool hide-sm" href="https://datareel.com/downloads/windows_reporting_agent/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Downloads</span></a>
+    <button class="tool icon-only" type="button" data-action="theme" aria-label="Switch light or dark theme"><svg class="icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="icon moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html" class="active" aria-current="page">What's new</a><div class="toc"><a href="#v32">Release 3.2</a></div><h4>Links</h4><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+  </nav>
+  <main class="content" id="main">
+<h1>What's new</h1>
+<p class="lead">The first open source release of the Windows Reporting Agent.</p>
+
+<h2 id="v32">Release 3.2 <span class="badge new">October 2026</span></h2>
+<p>Release 3.2 turns an in-house tool, written for a deployment of 120 laptops, into a package anyone can install.</p>
+<ul>
+  <li><strong>Signed uploads:</strong> each computer registers a certificate for a non-exportable machine key before it sends anything, and every report is signed. The server checks the signature, the approval state, the time and a one time nonce.</li>
+  <li><strong>Admin page:</strong> approve, revoke and delete computers and reports, with a login and CSRF protection. It replaces the old remove page, which had no login.</li>
+  <li><strong>Enrollment token:</strong> optional automatic approval for large rollouts.</li>
+  <li><strong>Settings file:</strong> every setting is in <code>windows_reporting_agent.ini</code> instead of the program code. The service reads it before each report.</li>
+  <li><strong>More delivery methods:</strong> a Windows file share (CIFS) and SCP, alone or next to HTTPS.</li>
+  <li><strong>Installer:</strong> a 64-bit setup.exe with server settings pages and command line switches for silent installs, upgrades that keep the settings, a restart-on-failure service, and an agent data folder limited to SYSTEM and Administrators.</li>
+  <li><strong>Server install script:</strong> <code>install_server.sh</code> sets up the PHP pages, <code>.htaccess</code>, admin login and data folder, with a dry run first.</li>
+  <li><strong>Fixes:</strong> the Defender alert query now only returns the last 30 days (critical and error events from all time were included before); HTTP errors from the server are reported instead of counted as success; WinINet errors show their message.</li>
+  <li><strong>Defaults:</strong> the report and log moved from <code>C:\</code> to <code>C:\ProgramData\WindowsReportAgent</code>.</li>
+</ul>
+<nav class="pager" aria-label="Previous and next page"><a class="card prev" href="troubleshooting.html"><small>Previous</small>Troubleshooting</a></nav>
+  </main>
+</div>
+<footer class="foot">Windows Reporting Agent 3.2 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+</body>
+</html>

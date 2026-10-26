@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reports and status page | Windows Reporting Agent Documentation</title>
+<meta name="description" content="The Windows Reporting Agent report format and the fleet status page built from the reports.">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="docs.css">
+<script src="docs.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="tool icon-only menu-btn" type="button" data-action="menu" aria-label="Menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="">Windows Reporting Agent <small>Documentation</small></a>
+    <span class="spacer"></span>
+    
+    <a class="tool hide-sm" href="https://datareel.com/downloads/windows_reporting_agent/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Downloads</span></a>
+    <button class="tool icon-only" type="button" data-action="theme" aria-label="Switch light or dark theme"><svg class="icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="icon moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html" class="active" aria-current="page">Reports and status page</a><div class="toc"><a href="#format">Report format</a><a href="#sections">Sections</a><a href="#status">Fleet status page</a><a href="#drsm">DRSM</a></div><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+  </nav>
+  <main class="content" id="main">
+<h1>Reports and status page</h1>
+<p class="lead">Each computer's report is a plain text file, easy to read, grep and diff. The server keeps the latest one per computer.</p>
+
+<h2 id="format">Report format</h2>
+<p>Reports are saved as <code>&lt;hostname&gt;_windows_report_agent.txt</code> in <code>reports_dir</code>. The header lines are <code>KEY: value</code> pairs, and each section starts with its name and a colon and ends with <code>END</code> and the name:</p>
+<pre><code>Windows report agent from host pc-0142
+VERSION: 3.2
+HOSTNAME: pc-0142
+ETIME: 1792971236
+DATETIME: Sun Oct 25 19:33:56 2026
+
+SERVICE TAG AND BARCODE:
+...
+END SERVICE TAG AND BARCODE
+
+INSTALLED WINDOWS PATCHES:
+Date:  2026-10-14
+ Patch: 2026-10 Cumulative Update for Windows 11 Version 25H2 for x64-based Systems
+...
+END INSTALLED WINDOWS PATCHES</code></pre>
+<p><code>ETIME</code> is the report time in seconds since 1970 (UTC), for check-in age calculations.</p>
+
+<h2 id="sections">Sections</h2>
+<div class="table-wrap"><table><thead><tr><th>Section</th><th>Contents</th></tr></thead><tbody><tr><td>SERVICE TAG AND BARCODE</td><td>Service tag (BIOS serial number, the Dell service tag on Dell computers) and asset tag from WMI</td></tr><tr><td>IP ADDRESS</td><td>IPv4 addresses of the network adapters that are up</td></tr><tr><td>USERS</td><td>Profile folders in <code>users_dir</code></td></tr><tr><td>ALL INSTALLED PROGRAMS</td><td>Name and version of every program in the 64-bit and 32-bit uninstall registry keys</td></tr><tr><td>WINDOWS DEFENDER ALERTS</td><td>Critical, error and warning events from the Defender event log for <code>event_lookback_days</code></td></tr><tr><td>INSTALLED WINDOWS PATCHES</td><td>Windows Update installation history</td></tr><tr><td>HOT FIXES</td><td>Installed hotfixes from WMI (<code>Win32_QuickFixEngineering</code>)</td></tr></tbody></table></div>
+
+<h2 id="status">Fleet status page</h2>
+<p><code>bash/run_windows_laptop_inventory.sh</code> reads the reports and builds an HTML and a text page that list every computer by check-in state:</p>
+<ul>
+  <li>reported in the last 24 hours</li>
+  <li>reported in the last 15 days</li>
+  <li>not reported for more than 15 days, with the number of days</li>
+  <li>empty or unreadable report</li>
+</ul>
+<p>It also writes pass and fail lists. It uses the DRSM configuration (<code>~/.drsm.sh</code> or <code>$BASEdir/etc/drsm.sh</code>) and runs from cron on the report server. Set <code>SYSLOG_DIR</code> at the top of the script to your <code>reports_dir</code>.</p>
+<pre><code><span class="c"># crontab: update the status page every 30 minutes</span>
+*/30 * * * * $HOME/windows_reporting_agent/bash/run_windows_laptop_inventory.sh &gt; /dev/null 2&gt;&amp;1</code></pre>
+
+<h2 id="drsm">DRSM</h2>
+<p>The <a href="https://datareel.com/info_drsm.php">DataReel System Monitor</a> is getting a Windows plugin that reads these reports, so Windows computers show up on the DRSM dashboard next to the Linux hosts. See the DRSM documentation when it is released.</p>
+<nav class="pager" aria-label="Previous and next page"><a class="card prev" href="configuration.html"><small>Previous</small>Configuration</a><a class="card next" href="security.html"><small>Next</small>Security</a></nav>
+  </main>
+</div>
+<footer class="foot">Windows Reporting Agent 3.2 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+</body>
+</html>

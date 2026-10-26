@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build from source | Windows Reporting Agent Documentation</title>
+<meta name="description" content="Build the Windows Reporting Agent programs and setup.exe with Visual Studio and Inno Setup.">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="docs.css">
+<script src="docs.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="tool icon-only menu-btn" type="button" data-action="menu" aria-label="Menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="">Windows Reporting Agent <small>Documentation</small></a>
+    <span class="spacer"></span>
+    
+    <a class="tool hide-sm" href="https://datareel.com/downloads/windows_reporting_agent/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Downloads</span></a>
+    <button class="tool icon-only" type="button" data-action="theme" aria-label="Switch light or dark theme"><svg class="icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="icon moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html">Security</a><a href="building.html" class="active" aria-current="page">Build from source</a><div class="toc"><a href="#needs">What you need</a><a href="#build">Build</a><a href="#files">Source files</a><a href="#dev">Development install</a></div><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+  </nav>
+  <main class="content" id="main">
+<h1>Build from source</h1>
+<p class="lead">The agent is plain C++ against the Win32 API, built with <code>nmake</code>. No libraries beyond the Windows SDK.</p>
+
+<h2 id="needs">What you need</h2>
+<ul>
+  <li>Visual Studio 2022 or later (Community is fine) with the <strong>Desktop development with C++</strong> workload</li>
+  <li><a href="https://jrsoftware.org/isinfo.php">Inno Setup 6</a> for the installer, in its default folder <code>C:\Program Files (x86)\Inno Setup 6</code></li>
+</ul>
+
+<h2 id="build">Build</h2>
+<p>Open an <strong>x64 Native Tools Command Prompt for VS</strong> (or run <code>vcvars64.bat</code>) in the source folder:</p>
+<pre><code>nmake               rem programs and the event message DLL
+nmake installer     rem output\windows_reporting_agent_setup_3.2.exe
+nmake clean</code></pre>
+
+<h2 id="files">Source files</h2>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>Contents</th></tr></thead><tbody><tr><td><code>windows_reporting_agent_svc.cpp</code></td><td>The service: main loop, report builder</td></tr><tr><td><code>common.cpp</code>, <code>common.h</code></td><td>Settings, inventory collection, CIFS and SCP delivery, HTTPS upload</td></tr><tr><td><code>agent_auth.cpp</code>, <code>agent_auth.h</code></td><td>Machine key, certificate, signing, registration, multipart POST</td></tr><tr><td><code>send_test_report.cpp</code></td><td>Sends one report now</td></tr><tr><td><code>windows_reporting_agent.mc</code></td><td>Event log message DLL</td></tr><tr><td><code>windows_reporting_agent_installer.iss</code></td><td>Inno Setup script</td></tr><tr><td><code>windows_reporting_agent.ini</code></td><td>Default settings, with comments</td></tr><tr><td><code>php/</code></td><td><code>register.php</code>, <code>upload.php</code>, <code>admin.php</code>, <code>wra_lib.php</code>, <code>install_server.sh</code>, <code>server.ini.example</code></td></tr><tr><td><code>bash/</code></td><td>Fleet status page script</td></tr></tbody></table></div>
+
+<h2 id="dev">Development install</h2>
+<p><code>build.txt</code> lists the individual compiler commands and the registry keys and commands for installing the service by hand, without the installer. <code>send_test_report.exe</code> reads the INI file next to it, so you can test against a development server from the build folder.</p>
+<nav class="pager" aria-label="Previous and next page"><a class="card prev" href="security.html"><small>Previous</small>Security</a><a class="card next" href="troubleshooting.html"><small>Next</small>Troubleshooting</a></nav>
+  </main>
+</div>
+<footer class="foot">Windows Reporting Agent 3.2 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+</body>
+</html>

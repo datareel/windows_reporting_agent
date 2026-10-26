@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuration | Windows Reporting Agent Documentation</title>
+<meta name="description" content="Every Windows Reporting Agent setting: the agent INI file, file share and SCP delivery, and the server's server.ini.">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="docs.css">
+<script src="docs.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="tool icon-only menu-btn" type="button" data-action="menu" aria-label="Menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="">Windows Reporting Agent <small>Documentation</small></a>
+    <span class="spacer"></span>
+    
+    <a class="tool hide-sm" href="https://datareel.com/downloads/windows_reporting_agent/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Downloads</span></a>
+    <button class="tool icon-only" type="button" data-action="theme" aria-label="Switch light or dark theme"><svg class="icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="icon moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html" class="active" aria-current="page">Configuration</a><div class="toc"><a href="#agent">Agent settings</a><a href="#cifs">File share delivery</a><a href="#scp">SCP delivery</a><a href="#server">Server settings</a></div><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+  </nav>
+  <main class="content" id="main">
+<h1>Configuration</h1>
+<p class="lead">The agent reads <code>windows_reporting_agent.ini</code> next to <code>windows_reporting_agent_svc.exe</code> before every report, so changes take effect on the next cycle without a restart. Any setting left out uses its default.</p>
+
+<h2 id="agent">Agent settings</h2>
+<div class="table-wrap"><table><thead><tr><th>Section</th><th>Setting</th><th>Default</th><th>Meaning</th></tr></thead><tbody><tr><td>delivery</td><td><code>methods</code></td><td><code>https</code></td><td>One or more of <code>https</code>, <code>cifs</code>, <code>scp</code>, comma separated. Every listed method runs each cycle.</td></tr><tr><td>https</td><td><code>host</code></td><td><code>reports.example.com</code></td><td>Report server</td></tr><tr><td>https</td><td><code>port</code></td><td><code>443</code></td><td>80 when <code>use_https=0</code></td></tr><tr><td>https</td><td><code>upload_path</code></td><td><code>/windows/upload/upload.php</code></td><td>Web path of <code>upload.php</code></td></tr><tr><td>https</td><td><code>register_path</code></td><td><code>/windows/upload/register.php</code></td><td>Web path of <code>register.php</code></td></tr><tr><td>https</td><td><code>use_https</code></td><td><code>1</code></td><td>0 for plain HTTP (test servers only)</td></tr><tr><td>https</td><td><code>ignore_cert_revocation</code></td><td><code>1</code></td><td>Skip the CRL/OCSP check, for networks that block CRL servers (WinINet error 12057)</td></tr><tr><td>https</td><td><code>enrollment_token</code></td><td>(empty)</td><td>Token from the server's <code>server.ini</code></td></tr><tr><td>cifs</td><td><code>share</code></td><td>(empty)</td><td>UNC path such as <code>\\fileserver\reports</code></td></tr><tr><td>scp</td><td><code>host / port / user</code></td><td><code> / 22 / </code></td><td>SSH server and account</td></tr><tr><td>scp</td><td><code>key_file</code></td><td><code>C:\ProgramData\WindowsReportAgent\id_ed25519</code></td><td>Private key with no passphrase</td></tr><tr><td>scp</td><td><code>remote_dir</code></td><td>(empty)</td><td>Directory on the SSH server</td></tr><tr><td>scp</td><td><code>known_hosts_file</code></td><td><code>C:\ProgramData\WindowsReportAgent\known_hosts</code></td><td>Host keys for the server</td></tr><tr><td>scp</td><td><code>strict_host_key_checking</code></td><td><code>yes</code></td><td><code>yes</code>, or <code>accept-new</code> to save the host key on the first connection</td></tr><tr><td>scp</td><td><code>scp_path</code></td><td><code>%SystemRoot%\System32\OpenSSH\scp.exe</code></td><td>Path to <code>scp.exe</code></td></tr><tr><td>scp</td><td><code>timeout_seconds</code></td><td><code>120</code></td><td>Stop a hung transfer</td></tr><tr><td>agent</td><td><code>report_interval_minutes</code></td><td><code>45</code></td><td>Minutes between reports</td></tr><tr><td>agent</td><td><code>report_dir</code></td><td><code>C:\ProgramData\WindowsReportAgent</code></td><td>Where the report is written before delivery</td></tr><tr><td>agent</td><td><code>log_file</code></td><td><code>C:\ProgramData\WindowsReportAgent\windows_report_agent.log</code></td><td>Result of the last delivery</td></tr><tr><td>agent</td><td><code>users_dir</code></td><td><code>C:\Users</code></td><td>Folder listed in the USERS section</td></tr><tr><td>agent</td><td><code>event_lookback_days</code></td><td><code>30</code></td><td>Days of Defender alerts to include</td></tr><tr><td>agent</td><td><code>data_dir</code></td><td><code>C:\ProgramData\WindowsReportAgent</code></td><td>Agent certificate and registration state</td></tr></tbody></table></div>
+<div class="callout"><p>The installer writes the <code>[https]</code> settings from its wizard pages or command line switches. Edit the file as an administrator: it is in <code>C:\Program Files</code>.</p></div>
+
+<h2 id="cifs">File share delivery</h2>
+<pre><code>[delivery]
+methods=cifs
+
+[cifs]
+share=\\fileserver\reports</code></pre>
+<p>The service runs as LocalSystem, so on a domain it connects as the computer account (<code>DOMAIN\HOSTNAME$</code>). Give the computer accounts, or the Domain Computers group, write access to the share and folder. The report is written under a temporary name and renamed, so a reader never sees a partial file. File share and SCP deliveries do not use the certificate registration: the share permissions or the SSH key control access.</p>
+
+<h2 id="scp">SCP delivery</h2>
+<p>Create a key with no passphrase for the agent, add the public key to the SSH account's <code>authorized_keys</code>, and limit the private key to SYSTEM and Administrators:</p>
+<pre><code>ssh-keygen -t ed25519 -N "" -f C:\ProgramData\WindowsReportAgent\id_ed25519
+icacls C:\ProgramData\WindowsReportAgent\id_ed25519 /inheritance:r /grant SYSTEM:F /grant Administrators:F
+ssh-keyscan reports.example.com &gt; C:\ProgramData\WindowsReportAgent\known_hosts</code></pre>
+<pre><code>[delivery]
+methods=https,scp
+
+[scp]
+host=reports.example.com
+user=winreports
+remote_dir=/var/lib/windows_reporting_agent/reports</code></pre>
+
+<h2 id="server">Server settings</h2>
+<p><code>server.ini</code> is found through the <code>WRA_SERVER_INI</code> variable that <code>install_server.sh</code> sets in <code>.htaccess</code>, or at <code>/etc/windows_reporting_agent/server.ini</code>. Keep it out of the web root: it holds the enrollment token.</p>
+<div class="table-wrap"><table><thead><tr><th>Section</th><th>Setting</th><th>Default</th><th>Meaning</th></tr></thead><tbody><tr><td>paths</td><td><code>reports_dir</code></td><td><code>/var/www/html/windows/reports</code></td><td>Where accepted reports are saved</td></tr><tr><td>paths</td><td><code>data_dir</code></td><td><code>/var/lib/windows_reporting_agent</code></td><td>Registrations and replay protection data</td></tr><tr><td>registration</td><td><code>enrollment_token</code></td><td>(empty)</td><td>Shared secret the agents send when they register</td></tr><tr><td>registration</td><td><code>auto_approve_with_token</code></td><td><code>1</code></td><td>1 approves an agent with the right token, 0 still needs an admin</td></tr><tr><td>upload</td><td><code>max_upload_bytes</code></td><td><code>2000000</code></td><td>Largest report accepted</td></tr><tr><td>upload</td><td><code>max_clock_skew_seconds</code></td><td><code>300</code></td><td>Largest clock difference allowed between agent and server</td></tr><tr><td>admin</td><td><code>require_remote_user</code></td><td><code>1</code></td><td><code>admin.php</code> only runs behind web server authentication</td></tr></tbody></table></div>
+<nav class="pager" aria-label="Previous and next page"><a class="card prev" href="approve.html"><small>Previous</small>Approve computers</a><a class="card next" href="reports.html"><small>Next</small>Reports and status page</a></nav>
+  </main>
+</div>
+<footer class="foot">Windows Reporting Agent 3.2 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+</body>
+</html>

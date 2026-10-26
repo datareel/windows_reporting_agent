@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security | Windows Reporting Agent Documentation</title>
+<meta name="description" content="How the Windows Reporting Agent identifies computers, signs reports and protects the report server.">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="docs.css">
+<script src="docs.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="tool icon-only menu-btn" type="button" data-action="menu" aria-label="Menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="">Windows Reporting Agent <small>Documentation</small></a>
+    <span class="spacer"></span>
+    
+    <a class="tool hide-sm" href="https://datareel.com/downloads/windows_reporting_agent/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Downloads</span></a>
+    <button class="tool icon-only" type="button" data-action="theme" aria-label="Switch light or dark theme"><svg class="icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="icon moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar" aria-label="Documentation">
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html" class="active" aria-current="page">Security</a><div class="toc"><a href="#identity">Agent identity</a><a href="#register">Registration</a><a href="#upload">Signed uploads</a><a href="#computer">On the computer</a><a href="#server">On the server</a><a href="#limits">Limits</a></div><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+  </nav>
+  <main class="content" id="main">
+<h1>Security</h1>
+<p class="lead">The report server only keeps reports that an approved computer signed with its own key. This page describes how, and what it does not cover.</p>
+
+<h2 id="identity">Agent identity</h2>
+<p>On its first run the agent creates a 3072-bit RSA key in the Microsoft Software Key Storage Provider as a machine key named <code>WindowsReportAgent</code>, marked not exportable, and a self-signed certificate for it with <code>CN=&lt;hostname&gt;</code>, saved as <code>agent_cert.pem</code> in <code>data_dir</code>. The key fingerprint shown in the log and on the admin page is the SHA-256 of the DER public key (SubjectPublicKeyInfo).</p>
+
+<h2 id="register">Registration</h2>
+<p>The agent posts its hostname, a timestamp, a random 128-bit nonce, its certificate and the enrollment token to <code>register.php</code>, signed over:</p>
+<pre><code>register\n&lt;hostname&gt;\n&lt;timestamp&gt;\n&lt;nonce&gt;\n&lt;SHA-256 hex of the certificate PEM&gt;</code></pre>
+<p>The server checks that the certificate's CN is the hostname, that the signature verifies with the certificate's key (proof that the agent holds the key), that the timestamp is within <code>max_clock_skew_seconds</code>, and that the nonce is new. A hostname is bound to the first key that registers it: a different key is refused with <code>key_mismatch</code> until an admin deletes the registration.</p>
+
+<h2 id="upload">Signed uploads</h2>
+<p>Each report upload carries the hostname, a timestamp, a new nonce and a signature (RSA PKCS#1 v1.5 with SHA-256) over:</p>
+<pre><code>upload\n&lt;hostname&gt;\n&lt;timestamp&gt;\n&lt;nonce&gt;\n&lt;SHA-256 hex of the report&gt;</code></pre>
+<p><code>upload.php</code> rejects the upload unless the host is registered and approved, the signature verifies with its registered certificate, the timestamp is in the window and the nonce has not been used. It saves the report as <code>&lt;hostname&gt;_windows_report_agent.txt</code> for the signing host, whatever file name was sent, so one computer cannot overwrite another computer's report. Replies are a <code>STATUS:</code> line the agent acts on: when a computer is revoked or deleted, the agent registers again on its next cycle.</p>
+
+<h2 id="computer">On the computer</h2>
+<ul>
+  <li>The service runs as LocalSystem. The private key never leaves the key store.</li>
+  <li>The installer limits <code>C:\ProgramData\WindowsReportAgent</code> (report, log, certificate, registration state) to SYSTEM and Administrators, so standard users cannot read the inventory or tamper with the agent state.</li>
+  <li>The settings file is in <code>C:\Program Files\WindowsReportAgent</code>, which only administrators can change.</li>
+</ul>
+
+<h2 id="server">On the server</h2>
+<ul>
+  <li><code>server.ini</code>, the registrations and the reports live in <code>DATA_DIR</code>, outside the web root or behind <code>Require all denied</code>.</li>
+  <li>Hostnames are checked against <code>^[a-z0-9][a-z0-9_-]{0,62}$</code> before they are used in a file name.</li>
+  <li><code>admin.php</code> needs web server authentication and a per-session CSRF token for every change, and escapes all output.</li>
+  <li>Files are written to a temporary name and renamed into place.</li>
+</ul>
+
+<h2 id="limits">Limits</h2>
+<ul>
+  <li>The signature proves who sent a report and that it was not changed. Only HTTPS keeps the inventory private on the network.</li>
+  <li>Anyone who is an administrator on a computer can make it send any report they like. The agent reports what Windows tells it.</li>
+  <li>The enrollment token is a shared secret. Anyone who has it can register a computer with an unused name while auto-approval is on. Use admin approval, or change the token after a deployment, if that matters to you.</li>
+  <li>File share and SCP deliveries are not signed: the share permissions or SSH key control access.</li>
+</ul>
+<nav class="pager" aria-label="Previous and next page"><a class="card prev" href="reports.html"><small>Previous</small>Reports and status page</a><a class="card next" href="building.html"><small>Next</small>Build from source</a></nav>
+  </main>
+</div>
+<footer class="foot">Windows Reporting Agent 3.2 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+</body>
+</html>
