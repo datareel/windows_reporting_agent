@@ -6,7 +6,7 @@
 //
 //   <Files "admin.php">
 //     AuthType Basic
-//     AuthName "Windows Reporting Agent admin"
+//     AuthName "DataReel Reporting Agent admin"
 //     AuthUserFile /etc/windows_reporting_agent/admin.htpasswd
 //     Require valid-user
 //   </Files>
@@ -107,7 +107,7 @@ function action_button($action, $hostname, $label, $csrf, $confirm = '') {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Windows Reporting Agent admin</title>
+    <title>DataReel Reporting Agent admin</title>
     <style>
         body { font-family: sans-serif; }
         table { border-collapse: collapse; }
@@ -117,7 +117,7 @@ function action_button($action, $hostname, $label, $csrf, $confirm = '') {
     </style>
 </head>
 <body>
-    <h2>Windows Reporting Agent admin</h2>
+    <h2>DataReel Reporting Agent admin</h2>
     <p>Signed in as <?php echo h($admin_user); ?>.
        Before approving, check that the key fingerprint matches the one in
        the agent log file on that computer.</p>

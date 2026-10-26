@@ -1,4 +1,4 @@
-; Windows Reporting Agent server settings
+; DataReel Reporting Agent server settings
 ;
 ; Copy to /etc/windows_reporting_agent/server.ini, or set the
 ; WRA_SERVER_INI environment variable in the web server to another path.

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reports and status page | Windows Reporting Agent Documentation</title>
-<meta name="description" content="The Windows Reporting Agent report format and the fleet status page built from the reports.">
+<title>Reports and status page | DataReel Reporting Agent Documentation</title>
+<meta name="description" content="The DataReel Reporting Agent report format and the fleet status page built from the reports.">
 <link rel="icon" href="images/logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="docs.css">
 <script src="docs.js"></script>
@@ -14,7 +14,7 @@
 <header class="topbar">
   <div class="topbar-inner">
     <button class="tool icon-only menu-btn" type="button" data-action="menu" aria-label="Menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-    <a class="brand" href="index.html"><img src="images/logo.svg" alt="">Windows Reporting Agent <small>Documentation</small></a>
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="">DataReel Reporting Agent <small>Documentation</small></a>
     <span class="spacer"></span>
     <a class="tool primary" href="https://datareel.com/windows_reporting_agent/demo/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>Live demo</span></a>
     <a class="tool hide-sm" href="https://datareel.com/downloads/windows_reporting_agent/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Downloads</span></a>
@@ -31,8 +31,8 @@
 
 <h2 id="format">Report format</h2>
 <p>Reports are saved as <code>&lt;hostname&gt;_windows_report_agent.txt</code> in <code>reports_dir</code>. The header lines are <code>KEY: value</code> pairs, and each section starts with its name and a colon and ends with <code>END</code> and the name:</p>
-<pre><code>Windows report agent from host pc-0142
-VERSION: 3.2
+<pre><code>DataReel Reporting Agent report from host pc-0142
+VERSION: 3.3
 HOSTNAME: pc-0142
 ETIME: 1792971236
 DATETIME: Sun Oct 25 19:33:56 2026
@@ -74,6 +74,6 @@ unwanted_apps = "uTorrent*, CCleaner*"</code></pre>
 <nav class="pager" aria-label="Previous and next page"><a class="card prev" href="configuration.html"><small>Previous</small>Configuration</a><a class="card next" href="security.html"><small>Next</small>Security</a></nav>
   </main>
 </div>
-<footer class="foot">Windows Reporting Agent 3.2 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+<footer class="foot">DataReel Reporting Agent for Windows 3.3 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
 </body>
 </html>

@@ -1,13 +1,13 @@
-; Windows Reporting Agent installer (Inno Setup 6)
+; DataReel Reporting Agent for Windows installer (Inno Setup 6)
 ;
 ; Build the programs first (nmake), then:
-;   "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows_reporting_agent_installer.iss
+;   "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" drra_installer.iss
 ; or: nmake installer
 ;
 ; The setup asks for the report server on a wizard page. For unattended
 ; installs (GPO, PDQ, a login script) pass the settings on the command line:
 ;
-;   windows_reporting_agent_setup_3.2.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+;   drra_setup_3.3.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
 ;       /SERVER=reports.example.com /PORT=443 /URLPATH=/windows/upload
 ;       /TOKEN=<enrollment token> [/HTTP]
 ;
@@ -19,40 +19,51 @@
 ; Setup logs record the command line: do not combine /CIFSPASS with /LOG,
 ; or delete the log afterwards.
 ; /CIFSUSER and /CIFSPASS are for shares outside a Windows domain. The
-; password is stored encrypted (DPAPI) in C:\ProgramData\WindowsReportAgent.
+; password is stored encrypted (DPAPI) in C:\ProgramData\DataReel\ReportingAgent.
 ;
 ; /URLPATH is the web path of the folder that holds upload.php and
 ; register.php. /HTTP turns off HTTPS (test servers only). Settings not
 ; given keep the value from an existing install, or the default.
+;
+; Releases up to 3.2 were named "Windows Reporting Agent" (service
+; WindowsReportAgent, C:\Program Files\WindowsReportAgent). This setup
+; moves such an install over: settings, agent data, encrypted share
+; password and machine key are kept, the old service and folders are
+; removed.
 
-#define AppVersion "3.2"
-#define SvcName "WindowsReportAgent"
+#define AppVersion "3.3"
+#define SvcName "DataReelReportAgent"
+#define AppTitle "DataReel Reporting Agent"
+#define DataDir "{commonappdata}\DataReel\ReportingAgent"
+; Names used up to release 3.2
+#define OldSvcName "WindowsReportAgent"
+#define OldAppId "{7AC8D5E4-C9B2-4216-B192-7844742EC7CC}"
 
 [Setup]
-AppId={{7AC8D5E4-C9B2-4216-B192-7844742EC7CC}
-AppName=Windows Reporting Agent
+AppId={{834749A3-54B1-4719-B5C6-A553FCDBAA9E}
+AppName={#AppTitle}
 AppVersion={#AppVersion}
-AppVerName=Windows Reporting Agent {#AppVersion}
+AppVerName={#AppTitle} for Windows {#AppVersion}
 AppPublisher=DataReel Software Development
 AppPublisherURL=https://datareel.com
-DefaultDirName={autopf}\{#SvcName}
+DefaultDirName={autopf}\DataReel\ReportingAgent
 DisableProgramGroupPage=yes
 ; Administrative privileges are required to manage services
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-OutputBaseFilename=windows_reporting_agent_setup_{#AppVersion}
+OutputBaseFilename=drra_setup_{#AppVersion}
 OutputDir=output
 LicenseFile=LICENSE
 Compression=lzma2
 SolidCompression=yes
 SetupLogging=yes
-UninstallDisplayName=Windows Reporting Agent
-UninstallDisplayIcon={app}\windows_reporting_agent_svc.exe
+UninstallDisplayName={#AppTitle} for Windows
+UninstallDisplayIcon={app}\drra_svc.exe
 
 [Files]
-Source: "windows_reporting_agent_svc.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "windows_reporting_agent.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "drra_svc.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "drra_messages.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "send_test_report.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "svcconfig.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "svccontrol.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -64,23 +75,23 @@ Source: "get_service_tag.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 ; Keep an edited INI file on upgrade and uninstall
-Source: "windows_reporting_agent.ini"; DestDir: "{app}"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "drra.ini"; DestDir: "{app}"; Flags: onlyifdoesntexist uninsneveruninstall
 
 [Dirs]
 ; Agent certificate, registration state, report and log file
-Name: "{commonappdata}\{#SvcName}"; Flags: uninsneveruninstall
+Name: "{#DataDir}"; Flags: uninsneveruninstall
 
 [Registry]
-Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Services\EventLog\Application\{#SvcName}"; ValueType: string; ValueName: "EventMessageFile"; ValueData: "{app}\windows_reporting_agent.dll"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Services\EventLog\Application\{#SvcName}"; ValueType: string; ValueName: "EventMessageFile"; ValueData: "{app}\drra_messages.dll"; Flags: uninsdeletekey
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Services\EventLog\Application\{#SvcName}"; ValueType: dword; ValueName: "TypesSupported"; ValueData: "0x00000007"; Flags: uninsdeletekey
 
 [Run]
 ; Only SYSTEM and Administrators may read or change the agent data (S-1-5-18, S-1-5-32-544)
-Filename: "{sys}\icacls.exe"; Parameters: """{commonappdata}\{#SvcName}"" /inheritance:r /grant:r *S-1-5-18:(OI)(CI)F *S-1-5-32-544:(OI)(CI)F"; Flags: runhidden; StatusMsg: "Securing the agent data folder..."
+Filename: "{sys}\icacls.exe"; Parameters: """{#DataDir}"" /inheritance:r /grant:r *S-1-5-18:(OI)(CI)F *S-1-5-32-544:(OI)(CI)F"; Flags: runhidden; StatusMsg: "Securing the agent data folder..."
 ; Create the service, or update it on an upgrade
-Filename: "{sys}\sc.exe"; Parameters: "create {#SvcName} start= auto binPath= ""\""{app}\windows_reporting_agent_svc.exe\"""" DisplayName= ""Windows Reporting Agent"""; Flags: runhidden; Check: not ServiceExists; StatusMsg: "Installing the service..."
-Filename: "{sys}\sc.exe"; Parameters: "config {#SvcName} start= auto binPath= ""\""{app}\windows_reporting_agent_svc.exe\"""""; Flags: runhidden; Check: ServiceExists
-Filename: "{sys}\sc.exe"; Parameters: "description {#SvcName} ""Sends hardware, software, patch and Windows Defender reports to a report server"""; Flags: runhidden
+Filename: "{sys}\sc.exe"; Parameters: "create {#SvcName} start= auto binPath= ""\""{app}\drra_svc.exe\"""" DisplayName= ""{#AppTitle}"""; Flags: runhidden; Check: not ServiceExists; StatusMsg: "Installing the service..."
+Filename: "{sys}\sc.exe"; Parameters: "config {#SvcName} start= auto binPath= ""\""{app}\drra_svc.exe\"""" DisplayName= ""{#AppTitle}"""; Flags: runhidden; Check: ServiceExists
+Filename: "{sys}\sc.exe"; Parameters: "description {#SvcName} ""DataReel Reporting Agent for Windows: sends hardware, software, patch and Windows Defender reports to a report server"""; Flags: runhidden
 ; Restart the service if it stops unexpectedly
 Filename: "{sys}\sc.exe"; Parameters: "failure {#SvcName} reset= 86400 actions= restart/60000/restart/60000/restart/300000"; Flags: runhidden
 ; The service is started in CurStepChanged(ssPostInstall), after the server
@@ -98,7 +109,137 @@ var
 
 function IniPath(Dir: String): String;
 begin
-  Result := AddBackslash(Dir) + 'windows_reporting_agent.ini';
+  Result := AddBackslash(Dir) + 'drra.ini';
+end;
+
+// ------------------------------------------------- release 3.2 and older
+
+const
+  MOVEFILE_DELAY_UNTIL_REBOOT = 4;
+
+// MoveFileEx with no new name: delete the file or empty folder at reboot
+function MoveFileExDelete(lpExistingFileName: String; lpNewFileName: Cardinal; dwFlags: Cardinal): Boolean;
+  external 'MoveFileExW@kernel32.dll stdcall';
+
+function OldAppDir: String;
+begin
+  Result := ExpandConstant('{commonpf64}\WindowsReportAgent');
+end;
+
+function OldDataDir: String;
+begin
+  Result := ExpandConstant('{commonappdata}\WindowsReportAgent');
+end;
+
+function OldIniPath: String;
+begin
+  Result := OldAppDir + '\windows_reporting_agent.ini';
+end;
+
+// Settings to show on the wizard pages: this install's, or the old one's
+function SettingsIni(Dir: String): String;
+begin
+  Result := IniPath(Dir);
+  if not FileExists(Result) and FileExists(OldIniPath) then
+    Result := OldIniPath;
+end;
+
+function OldServiceExists: Boolean;
+var
+  RC: Integer;
+begin
+  Result := Exec(ExpandConstant('{sys}\sc.exe'), 'query {#OldSvcName}', '', SW_HIDE, ewWaitUntilTerminated, RC) and (RC = 0);
+end;
+
+// Copy an old INI file to the new folder with the old data paths changed
+procedure MigrateIniFile(Src, Dest: String);
+var
+  Text: AnsiString;
+  S: String;
+begin
+  if FileExists(Dest) or not LoadStringFromFile(Src, Text) then
+    exit;
+  S := String(Text);
+  StringChangeEx(S, OldDataDir + '\windows_report_agent.log', ExpandConstant('{#DataDir}') + '\drra.log', True);
+  StringChangeEx(S, OldDataDir, ExpandConstant('{#DataDir}'), True);
+  StringChangeEx(S, '; Windows Reporting Agent settings', '; DataReel Reporting Agent for Windows: settings', True);
+  if SaveStringToFile(Dest, AnsiString(S), False) then
+    Log('Moved settings ' + Src + ' to ' + Dest)
+  else
+    Log('Could not write ' + Dest);
+end;
+
+// Move a 3.2 or older install: settings, agent data, then remove the old
+// service, uninstall entry and folders. The machine key keeps its old
+// name; the agent finds it.
+procedure MigrateOldInstall;
+var
+  FindRec: TFindRec;
+  AppDir, NewData, UninstallString: String;
+  RC, I: Integer;
+begin
+  if not OldServiceExists and not DirExists(OldAppDir) and not DirExists(OldDataDir) then
+    exit;
+  Log('Found a Windows Reporting Agent 3.2 or older install, moving it');
+  AppDir := ExpandConstant('{app}');
+  NewData := ExpandConstant('{#DataDir}');
+
+  if OldServiceExists then begin
+    Exec(ExpandConstant('{sys}\net.exe'), 'stop {#OldSvcName}', '', SW_HIDE, ewWaitUntilTerminated, RC);
+    Exec(ExpandConstant('{sys}\sc.exe'), 'delete {#OldSvcName}', '', SW_HIDE, ewWaitUntilTerminated, RC);
+    Log('Removed the {#OldSvcName} service');
+  end;
+
+  // Settings: windows_reporting_agent.ini and any copies of it
+  ForceDirectories(AppDir);
+  if FindFirst(OldAppDir + '\windows_reporting_agent.ini*', FindRec) then begin
+    try
+      repeat
+        MigrateIniFile(OldAppDir + '\' + FindRec.Name,
+                       AppDir + '\drra.ini' + Copy(FindRec.Name, Length('windows_reporting_agent.ini') + 1, MaxInt));
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+
+  // Agent data: certificate, registration state, share password, keys.
+  // The old report and log are not needed.
+  ForceDirectories(NewData);
+  if FindFirst(OldDataDir + '\*', FindRec) then begin
+    try
+      repeat
+        if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY = 0) and
+           (Pos('_windows_report_agent.txt', FindRec.Name) = 0) and
+           (CompareText(FindRec.Name, 'windows_report_agent.log') <> 0) and
+           not FileExists(NewData + '\' + FindRec.Name) then begin
+          if FileCopy(OldDataDir + '\' + FindRec.Name, NewData + '\' + FindRec.Name, True) then
+            Log('Moved ' + FindRec.Name + ' to ' + NewData);
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+
+  // Run the old uninstaller; it keeps its INI and data folder, which are
+  // deleted below now that they are copied
+  if RegQueryStringValue(HKLM, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#OldAppId}_is1',
+                         'UninstallString', UninstallString) then begin
+    Exec(RemoveQuotes(UninstallString), '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, RC);
+    // The uninstaller runs a copy of itself, wait for it to finish
+    for I := 1 to 60 do begin
+      if not FileExists(OldAppDir + '\unins000.exe') then
+        break;
+      Sleep(500);
+    end;
+    Log('Old uninstaller returned ' + IntToStr(RC));
+  end;
+  RegDeleteKeyIncludingSubkeys(HKLM, 'SYSTEM\CurrentControlSet\Services\EventLog\Application\{#OldSvcName}');
+  if DelTree(OldAppDir, True, True, True) then
+    Log('Removed ' + OldAppDir);
+  if DelTree(OldDataDir, True, True, True) then
+    Log('Removed ' + OldDataDir);
 end;
 
 function ServiceExists: Boolean;
@@ -142,9 +283,9 @@ procedure InitializeWizard;
 begin
   ServerPage := CreateInputQueryPage(wpSelectDir,
     'Report server', 'Where should this computer send its reports?',
-    'Enter the web server that runs the Windows Reporting Agent PHP pages ' +
+    'Enter the web server that runs the DataReel Reporting Agent PHP pages ' +
     '(register.php and upload.php). You can change these later in ' +
-    'windows_reporting_agent.ini in the install folder.');
+    'drra.ini in the install folder.');
   ServerPage.Add('Server host name:', False);
   ServerPage.Add('Port:', False);
   ServerPage.Add('Web path of the upload pages folder:', False);
@@ -164,7 +305,7 @@ var
   Ini: String;
   UseHttps: Boolean;
 begin
-  Ini := IniPath(WizardDirValue);
+  Ini := SettingsIni(WizardDirValue);
   // A new /SERVER= on the command line means HTTPS unless /HTTP is given;
   // otherwise keep the setting of an existing install
   if ExpandConstant('{param:SERVER|}') <> '' then
@@ -214,6 +355,7 @@ var
 begin
   if ServiceExists then
     Exec(ExpandConstant('{sys}\net.exe'), 'stop {#SvcName}', '', SW_HIDE, ewWaitUntilTerminated, RC);
+  MigrateOldInstall;
   Result := '';
 end;
 
@@ -243,6 +385,18 @@ begin
       SetIniString('https', 'use_https', '0', Ini);
     Log('Wrote server settings to ' + Ini);
 
+    // The old uninstaller may still have been deleting itself when the
+    // old folder was removed before the install, try again. If something
+    // still has it open (an Explorer window), delete it at the next reboot.
+    if DirExists(OldAppDir) then begin
+      if DelTree(OldAppDir, True, True, True) then
+        Log('Removed ' + OldAppDir)
+      else if MoveFileExDelete(OldAppDir, 0, MOVEFILE_DELAY_UNTIL_REBOOT) then
+        Log(OldAppDir + ' is in use, it will be deleted at the next reboot')
+      else
+        Log('Could not remove ' + OldAppDir);
+    end;
+
     // Delivery methods and the file share, from the command line only
     if ExpandConstant('{param:METHODS|}') <> '' then
       SetIniString('delivery', 'methods', ExpandConstant('{param:METHODS|}'), Ini);
@@ -251,7 +405,7 @@ begin
     if ExpandConstant('{param:CIFSUSER|}') <> '' then
       SetIniString('cifs', 'user', ExpandConstant('{param:CIFSUSER|}'), Ini);
     if ExpandConstant('{param:CIFSPASS|}') <> '' then begin
-      Exec(ExpandConstant('{app}\windows_reporting_agent_svc.exe'),
+      Exec(ExpandConstant('{app}\drra_svc.exe'),
            'set-cifs-password "' + ExpandConstant('{param:CIFSPASS|}') + '"', '', SW_HIDE, ewWaitUntilTerminated, RC);
       Log('set-cifs-password returned ' + IntToStr(RC));
     end;

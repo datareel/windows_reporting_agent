@@ -4,7 +4,7 @@
 CXXFLAGS = /nologo /EHsc
 CFLAGS   = /nologo
 
-PROGS = windows_reporting_agent_svc.exe \
+PROGS = drra_svc.exe \
         send_test_report.exe \
         svcconfig.exe \
         svccontrol.exe \
@@ -14,7 +14,7 @@ PROGS = windows_reporting_agent_svc.exe \
         get_ip_address.exe \
         get_service_tag.exe
 
-all: $(PROGS) windows_reporting_agent.dll
+all: $(PROGS) drra_messages.dll
 
 common.obj: common.cpp common.h agent_auth.h
 	cl $(CXXFLAGS) /c common.cpp
@@ -22,8 +22,8 @@ common.obj: common.cpp common.h agent_auth.h
 agent_auth.obj: agent_auth.cpp agent_auth.h common.h
 	cl $(CXXFLAGS) /c agent_auth.cpp
 
-windows_reporting_agent_svc.exe: windows_reporting_agent_svc.cpp windows_reporting_agent.h common.h common.obj agent_auth.obj
-	cl $(CXXFLAGS) windows_reporting_agent_svc.cpp common.obj agent_auth.obj
+drra_svc.exe: drra_svc.cpp drra_messages.h common.h common.obj agent_auth.obj
+	cl $(CXXFLAGS) drra_svc.cpp common.obj agent_auth.obj
 
 send_test_report.exe: send_test_report.cpp common.h common.obj agent_auth.obj
 	cl $(CXXFLAGS) send_test_report.cpp common.obj agent_auth.obj
@@ -50,22 +50,22 @@ get_service_tag.exe: get_service_tag.cpp
 	cl $(CXXFLAGS) get_service_tag.cpp
 
 # Message DLL
-windows_reporting_agent.rc windows_reporting_agent.h: windows_reporting_agent.mc
-	mc -U windows_reporting_agent.mc
+drra_messages.rc drra_messages.h: drra_messages.mc
+	mc -U drra_messages.mc
 
-windows_reporting_agent.res: windows_reporting_agent.rc
-	rc -r windows_reporting_agent.rc
+drra_messages.res: drra_messages.rc
+	rc -r drra_messages.rc
 
-windows_reporting_agent.dll: windows_reporting_agent.res
-	link /nologo -dll -noentry -out:windows_reporting_agent.dll windows_reporting_agent.res
+drra_messages.dll: drra_messages.res
+	link /nologo -dll -noentry -out:drra_messages.dll drra_messages.res
 
 # Windows setup.exe in output\ (needs Inno Setup 6)
 ISCC = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 
 installer: all
-	$(ISCC) /Qp windows_reporting_agent_installer.iss
+	$(ISCC) /Qp drra_installer.iss
 
 clean:
 	-del /q *.exe *.obj *.bin 2>nul
-	-del /q windows_reporting_agent.dll windows_reporting_agent.res windows_reporting_agent.rc 2>nul
+	-del /q drra_messages.dll drra_messages.res drra_messages.rc 2>nul
 	-rmdir /s /q output 2>nul

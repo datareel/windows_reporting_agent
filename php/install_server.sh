@@ -1,6 +1,6 @@
 #!/bin/bash
 # install_server.sh
-# Install the Windows Reporting Agent PHP pages on a web server.
+# Install the DataReel Reporting Agent PHP pages on a web server.
 #
 # Usage: install_server.sh [--apply] [--admin-user NAME] [--drsm-login CONFIG]
 #                          WEB_DIR DATA_DIR
@@ -116,7 +116,7 @@ SetEnv WRA_SERVER_INI ${DATA_DIR}/server.ini
 # The admin and fleet status pages need a login
 <FilesMatch "^(admin|status|report)\.php$">
     AuthType Basic
-    AuthName "Windows Reporting Agent admin"
+    AuthName "DataReel Reporting Agent admin"
     AuthUserFile ${DATA_DIR}/admin.htpasswd
     Require valid-user
 </FilesMatch>
@@ -163,7 +163,7 @@ Next steps:
      restorecon -R ${DATA_DIR}
  - Edit ${DATA_DIR}/server.ini (enrollment token, approval policy)
  - Create the admin login if you have not: htpasswd -c -B ${DATA_DIR}/admin.htpasswd <user>
- - Point the agents at the pages, in windows_reporting_agent.ini [https]:
+ - Point the agents at the pages, in drra.ini [https]:
      upload_path   = <url path of ${WEB_DIR}>/upload/upload.php
      register_path = <url path of ${WEB_DIR}>/upload/register.php
 EOF

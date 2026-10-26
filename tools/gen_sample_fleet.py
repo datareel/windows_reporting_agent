@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Generate a sample fleet of Windows Reporting Agent reports with made up
+# Generate a sample fleet of DataReel Reporting Agent reports with made up
 # hostnames, users, service tags and addresses, for the live demo, for
 # testing the status page and the DRSM plugins, and for screenshots.
 #
@@ -58,7 +58,7 @@ BASE_APPS = [
     ("Microsoft Teams Meeting Add-in for Microsoft Office", "1.25.26101"),
     ("Microsoft Update Health Tools", "5.72.0.0"),
     ("Microsoft Visual C++ 2015-2022 Redistributable (x64) - 14.50.35719", "14.50.35719.0"),
-    ("Windows Reporting Agent", "3.2"),
+    ("DataReel Reporting Agent for Windows", "3.3"),
 ]
 BASE_APPS_32 = [
     ("Microsoft Visual C++ 2015-2022 Redistributable (x86) - 14.50.35719", "14.50.35719.0"),
@@ -165,8 +165,8 @@ def defender_event(rng, host, epoch, event_id, level, data):
 
 def build_report(rng, host, scen, report_time, users):
     lines = []
-    lines.append("Windows report agent from host %s" % host)
-    lines.append("VERSION: 3.2")
+    lines.append("DataReel Reporting Agent report from host %s" % host)
+    lines.append("VERSION: 3.3")
     lines.append("HOSTNAME: %s" % host)
     if scen != "bad":
         lines.append("ETIME: %d" % report_time)
@@ -312,7 +312,7 @@ def build_report(rng, host, scen, report_time, users):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Generate a sample fleet of Windows Reporting Agent reports")
+    ap = argparse.ArgumentParser(description="Generate a sample fleet of DataReel Reporting Agent reports")
     ap.add_argument("--out", default="sample_fleet")
     ap.add_argument("--count", type=int, default=48)
     ap.add_argument("--seed", type=int, default=2026)

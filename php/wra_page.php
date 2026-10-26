@@ -27,7 +27,7 @@ function wra_page_start($title) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title><?php echo h($title); ?> | Windows Reporting Agent</title>
+<title><?php echo h($title); ?> | DataReel Reporting Agent</title>
 <style>
 :root { --bg:#f4f6fa; --card:#fff; --text:#1b2333; --muted:#5b6578; --line:#dfe4ec; --accent:#1769c2;
         --ok:#1a7f45; --ok-bg:#e3f4ea; --warn:#9a5b00; --warn-bg:#fdf0d8; --err:#b42318; --err-bg:#fde5e2; --code:#eef1f6; }
@@ -72,7 +72,7 @@ footer { color:var(--muted); font-size:13px; text-align:center; padding:24px; }
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="status.php">Windows Reporting Agent<small>Fleet status</small></a>
+  <a class="brand" href="status.php">DataReel Reporting Agent<small>Fleet status</small></a>
   <nav><a href="status.php">Computers</a><?php if ($cfg['status']['public'] !== '1') { ?><a href="admin.php">Admin</a><?php } ?><?php if ($cfg['admin']['login'] === 'drsm' && isset($GLOBALS['WWWvpath'])) { ?><a href="<?php echo h(rtrim($GLOBALS['WWWvpath'], '/') . '/'); ?>">Dashboard</a><?php } ?></nav>
 </header>
 <main>
@@ -84,7 +84,7 @@ footer { color:var(--muted); font-size:13px; text-align:center; padding:24px; }
 function wra_page_end() {
 ?>
 </main>
-<footer>Windows Reporting Agent 3.2 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+<footer>DataReel Reporting Agent for Windows 3.3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
 </body>
 </html>
 <?php

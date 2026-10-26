@@ -173,11 +173,11 @@ void SetDefaultAgentConfig(AgentConfig &cfg)
   cfg.scp_host_key_check = "yes";
   cfg.scp_timeout_seconds = 120;
   cfg.report_interval_minutes = 45;
-  cfg.report_dir = "C:\\ProgramData\\WindowsReportAgent";
-  cfg.log_file = "C:\\ProgramData\\WindowsReportAgent\\windows_report_agent.log";
+  cfg.report_dir = "C:\\ProgramData\\DataReel\\ReportingAgent";
+  cfg.log_file = "C:\\ProgramData\\DataReel\\ReportingAgent\\drra.log";
   cfg.users_dir = "C:\\Users";
   cfg.event_lookback_days = 30;
-  cfg.data_dir = "C:\\ProgramData\\WindowsReportAgent";
+  cfg.data_dir = "C:\\ProgramData\\DataReel\\ReportingAgent";
   cfg.ini_path.clear();
 }
 
@@ -356,7 +356,7 @@ int SetCifsPassword(const AgentConfig &cfg, const std::string &password, std::st
   }
   DATA_BLOB in = { (DWORD)password.length(), (BYTE *)password.data() };
   DATA_BLOB out = { 0, NULL };
-  if(!CryptProtectData(&in, L"WindowsReportAgent CIFS password", NULL, NULL, NULL,
+  if(!CryptProtectData(&in, L"DataReel Reporting Agent CIFS password", NULL, NULL, NULL,
 		       CRYPTPROTECT_LOCAL_MACHINE | CRYPTPROTECT_UI_FORBIDDEN, &out)) {
     output += "ERROR - Could not encrypt the password: " + GetLastErrorAsString() + "\n";
     return -1;
@@ -386,7 +386,7 @@ int ReadCifsPassword(const AgentConfig &cfg, std::string &password, std::string 
   std::string fname = JoinPath(cfg.data_dir, CIFS_PASSWORD_FILE);
   HANDLE hFile = CreateFileA(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
   if(hFile == INVALID_HANDLE_VALUE) {
-    output = "ERROR - No share password, run: windows_reporting_agent_svc.exe set-cifs-password";
+    output = "ERROR - No share password, run: drra_svc.exe set-cifs-password";
     return -1;
   }
   std::vector<BYTE> blob;

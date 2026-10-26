@@ -27,7 +27,7 @@
 #include <vector>
 
 // APP includes
-#include "windows_reporting_agent.h"
+#include "drra_messages.h"
 
 // Ensure the library is linked
 #pragma comment(lib, "Wininet.lib")
@@ -46,7 +46,7 @@
 #pragma comment(lib, "OleAut32.lib")
 #pragma comment(lib, "comsuppw.lib")
 
-#define SVCNAME TEXT("WindowsReportAgent")
+#define SVCNAME TEXT("DataReelReportAgent")
 
 SERVICE_STATUS          gSvcStatus; 
 SERVICE_STATUS_HANDLE   gSvcStatusHandle; 
@@ -529,7 +529,7 @@ int upload_agent_report(const AgentConfig &cfg, std::string &output) {
     return 1;
   }
 
-  std::string report_data = "Windows report agent from host " + HOSTNAME + "\n";
+  std::string report_data = "DataReel Reporting Agent report from host " + HOSTNAME + "\n";
   report_data += "VERSION: " AGENT_VERSION "\n";
   report_data += "HOSTNAME: " + HOSTNAME + "\n";
   std::time_t time_result = std::time(nullptr);

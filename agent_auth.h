@@ -15,7 +15,10 @@
 #include <ncrypt.h>
 #include <utility>
 
-#define AGENT_KEY_NAME L"WindowsReportAgent"
+#define AGENT_KEY_NAME L"DataReelReportAgent"
+// Key name of releases before 3.3, still used when it exists so an
+// upgraded computer keeps its registration
+#define AGENT_LEGACY_KEY_NAME L"WindowsReportAgent"
 #define AGENT_KEY_BITS 3072
 #define AGENT_CERT_FILE "agent_cert.pem"
 #define AGENT_STATE_FILE "registration_status.txt"

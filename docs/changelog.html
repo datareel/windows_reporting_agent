@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>What's new | Windows Reporting Agent Documentation</title>
-<meta name="description" content="Windows Reporting Agent release history.">
+<title>What's new | DataReel Reporting Agent Documentation</title>
+<meta name="description" content="DataReel Reporting Agent release history.">
 <link rel="icon" href="images/logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="docs.css">
 <script src="docs.js"></script>
@@ -14,7 +14,7 @@
 <header class="topbar">
   <div class="topbar-inner">
     <button class="tool icon-only menu-btn" type="button" data-action="menu" aria-label="Menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-    <a class="brand" href="index.html"><img src="images/logo.svg" alt="">Windows Reporting Agent <small>Documentation</small></a>
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="">DataReel Reporting Agent <small>Documentation</small></a>
     <span class="spacer"></span>
     <a class="tool primary" href="https://datareel.com/windows_reporting_agent/demo/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>Live demo</span></a>
     <a class="tool hide-sm" href="https://datareel.com/downloads/windows_reporting_agent/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Downloads</span></a>
@@ -23,29 +23,38 @@
 </header>
 <div class="layout">
   <nav class="sidebar" aria-label="Documentation">
-    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html" class="active" aria-current="page">What's new</a><div class="toc"><a href="#v32">Release 3.2</a></div><h4>Links</h4><a href="https://datareel.com/windows_reporting_agent/demo/">Live demo</a><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html" class="active" aria-current="page">What's new</a><div class="toc"><a href="#v33">Release 3.3</a><a href="#v32">Release 3.2</a></div><h4>Links</h4><a href="https://datareel.com/windows_reporting_agent/demo/">Live demo</a><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
   </nav>
   <main class="content" id="main">
 <h1>What's new</h1>
-<p class="lead">The first open source release of the Windows Reporting Agent.</p>
+<p class="lead">Release history of the DataReel Reporting Agent for Windows.</p>
 
-<h2 id="v32">Release 3.2 <span class="badge new">October 2026</span></h2>
-<p>Release 3.2 turns an in-house tool, written for a deployment of 120 laptops, into a package anyone can install.</p>
+<h2 id="v33">Release 3.3 <span class="badge new">October 2026</span></h2>
+<ul>
+  <li><strong>New name:</strong> DataReel Reporting Agent for Windows. Releases up to 3.2 were called Windows Reporting Agent, with a service and folders named <code>WindowsReportAgent</code>, which could be mistaken for part of Windows. The service is now <code>DataReelReportAgent</code>, the programs are in <code>C:\Program Files\DataReel\ReportingAgent</code>, the agent data in <code>C:\ProgramData\DataReel\ReportingAgent</code>, and the files are <code>drra_svc.exe</code>, <code>drra.ini</code> and <code>drra.log</code>.</li>
+  <li><strong>Upgrades from 3.2:</strong> setup moves the settings, certificate, registration and share password to the new names and removes the old service and folders. The agent keeps its machine key, so it stays approved.</li>
+  <li><strong>File share login:</strong> CIFS delivery to shares outside a Windows domain, with the password encrypted (DPAPI) in the agent data folder. Set it with <code>drra_svc.exe set-cifs-password</code> or the setup switches <code>/CIFSUSER=</code> and <code>/CIFSPASS=</code>.</li>
+  <li><strong>Dashboard login:</strong> the admin and status pages can use the DataReel System Monitor dashboard login (<code>login = drsm</code>).</li>
+  <li><strong>Fixes:</strong> the agent registers again when it is pointed at a different server, and a new <code>/SERVER=</code> in setup turns HTTPS on.</li>
+</ul>
+
+<h2 id="v32">Release 3.2</h2>
+<p>Release 3.2, the first open source release (named Windows Reporting Agent), turns an in-house tool, written for a deployment of 120 laptops, into a package anyone can install.</p>
 <ul>
   <li><strong>Signed uploads:</strong> each computer registers a certificate for a non-exportable machine key before it sends anything, and every report is signed. The server checks the signature, the approval state, the time and a one time nonce.</li>
   <li><strong>Admin page:</strong> approve, revoke and delete computers and reports, with a login and CSRF protection. It replaces the old remove page, which had no login.</li>
   <li><strong>Enrollment token:</strong> optional automatic approval for large rollouts.</li>
-  <li><strong>Settings file:</strong> every setting is in <code>windows_reporting_agent.ini</code> instead of the program code. The service reads it before each report.</li>
+  <li><strong>Settings file:</strong> every setting is in <code>drra.ini</code> instead of the program code. The service reads it before each report.</li>
   <li><strong>More delivery methods:</strong> a Windows file share (CIFS) and SCP, alone or next to HTTPS.</li>
   <li><strong>Installer:</strong> a 64-bit setup.exe with server settings pages and command line switches for silent installs, upgrades that keep the settings, a restart-on-failure service, and an agent data folder limited to SYSTEM and Administrators.</li>
   <li><strong>Fleet status pages:</strong> <code>status.php</code> and <code>report.php</code> check every computer's last report for late check-ins, old Windows updates, Defender problems, and required and unwanted programs, with a <a href= + DEMO + >live demo</a> on a sample fleet.</li>
   <li><strong>Server install script:</strong> <code>install_server.sh</code> sets up the PHP pages, <code>.htaccess</code>, admin login and data folder, with a dry run first.</li>
   <li><strong>Fixes:</strong> the Defender alert query now only returns the last 30 days (critical and error events from all time were included before); HTTP errors from the server are reported instead of counted as success; WinINet errors show their message.</li>
-  <li><strong>Defaults:</strong> the report and log moved from <code>C:\</code> to <code>C:\ProgramData\WindowsReportAgent</code>.</li>
+  <li><strong>Defaults:</strong> the report and log moved from <code>C:\</code> to <code>C:\ProgramData\DataReel\ReportingAgent</code>.</li>
 </ul>
 <nav class="pager" aria-label="Previous and next page"><a class="card prev" href="troubleshooting.html"><small>Previous</small>Troubleshooting</a></nav>
   </main>
 </div>
-<footer class="foot">Windows Reporting Agent 3.2 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+<footer class="foot">DataReel Reporting Agent for Windows 3.3 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
 </body>
 </html>

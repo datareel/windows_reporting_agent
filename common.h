@@ -6,8 +6,8 @@
 #include <string>
 #include <vector>
 
-#define AGENT_VERSION "3.2"
-#define AGENT_INI_FILE "windows_reporting_agent.ini"
+#define AGENT_VERSION "3.3"
+#define AGENT_INI_FILE "drra.ini"
 
 // Agent settings, loaded from AGENT_INI_FILE in the same directory as the
 // executable. Any setting missing from the INI file keeps its default.

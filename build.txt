@@ -4,7 +4,7 @@ C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Auxiliary\Build\vcvars32
 
 Build the programs:
 
-cl /EHsc windows_reporting_agent_svc.cpp common.cpp agent_auth.cpp
+cl /EHsc drra_svc.cpp common.cpp agent_auth.cpp
 cl /EHsc send_test_report.cpp common.cpp agent_auth.cpp
 cl svcconfig.cpp
 cl svccontrol.cpp
@@ -14,28 +14,28 @@ cl /EHsc list_defender_alerts.cpp
 
 Build the message DLL
 
-mc -U windows_reporting_agent.mc
-rc -r windows_reporting_agent.rc
-link -dll -noentry -out:windows_reporting_agent.dll windows_reporting_agent.res
+mc -U drra_messages.mc
+rc -r drra_messages.rc
+link -dll -noentry -out:drra_messages.dll drra_messages.res
 
 Edit the settings:
 
-Copy windows_reporting_agent.ini to the same directory as the .exe files
+Copy drra.ini to the same directory as the .exe files
 and set [server] host to your report server.
 
 Add the registry keys:
 
-reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\EventLog\Application\WindowsReportAgent
-reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\EventLog\Application\WindowsReportAgent /v EventMessageFile /t REG_SZ /d windows_reporting_agent.dll
-reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\EventLog\Application\WindowsReportAgent /v TypesSupported /t REG_DWORD /d 0x00000007
+reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\EventLog\Application\DataReelReportAgent
+reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\EventLog\Application\DataReelReportAgent /v EventMessageFile /t REG_SZ /d drra_messages.dll
+reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\EventLog\Application\DataReelReportAgent /v TypesSupported /t REG_DWORD /d 0x00000007
 
 As Administrator:
 
 Run the following command to install the service, test and uninstall:
 
-windows_reporting_agent_svc.exe install
+drra_svc.exe install
 
-svccontrol start WindowsReportAgent
+svccontrol start DataReelReportAgent
 
-svcconfig delete WindowsReportAgent
+svcconfig delete DataReelReportAgent
 

@@ -239,6 +239,11 @@ int LoadOrCreateAgentIdentity(const AgentConfig &cfg, AgentIdentity &id, std::st
   bool new_key = false;
   status = NCryptOpenKey(hProv, &hKey, AGENT_KEY_NAME, 0, NCRYPT_MACHINE_KEY_FLAG);
   if(status == NTE_BAD_KEYSET) {
+    // A computer upgraded from 3.2 or older keeps its old key, so its
+    // registration with the report server stays valid
+    status = NCryptOpenKey(hProv, &hKey, AGENT_LEGACY_KEY_NAME, 0, NCRYPT_MACHINE_KEY_FLAG);
+  }
+  if(status == NTE_BAD_KEYSET) {
     status = NCryptCreatePersistedKey(hProv, &hKey, BCRYPT_RSA_ALGORITHM, AGENT_KEY_NAME, 0, NCRYPT_MACHINE_KEY_FLAG);
     if(status == ERROR_SUCCESS) {
       DWORD bits = AGENT_KEY_BITS;
@@ -353,7 +358,7 @@ int HttpPostMultipart(const AgentConfig &cfg, const std::string &path, const For
   error.clear();
 
   // 1. Initialize WinINet
-  std::string user_agent = "WindowsReportAgent/" AGENT_VERSION;
+  std::string user_agent = "DataReelReportAgent/" AGENT_VERSION;
   HINTERNET hSession = InternetOpenA(user_agent.c_str(), INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
   if (!hSession) {
     error = "ERROR - Could not initialize WinINet session";
@@ -392,7 +397,7 @@ int HttpPostMultipart(const AgentConfig &cfg, const std::string &path, const For
   }
 
   // 4. Construct Multipart/Form-Data body
-  std::string boundary = "----WindowsReportAgent" + RandomHex(16);
+  std::string boundary = "----DataReelReportAgent" + RandomHex(16);
   std::string headers = "Content-Type: multipart/form-data; boundary=" + boundary;
   std::string body;
   for (const auto &field : fields) {

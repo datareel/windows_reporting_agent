@@ -1,4 +1,4 @@
-# Windows Reporting Agent
+# DataReel Reporting Agent for Windows
 
 A small Windows service that collects a hardware, software, patch and
 Windows Defender inventory from each computer and sends it to a report
@@ -58,7 +58,7 @@ The service sends a new report every 45 minutes by default.
 ```
  Windows computers                           Report server (Apache + PHP)
  +----------------------------+  HTTPS POST  +------------------------------+
- | WindowsReportAgent service | -----------> | register.php  (first run)    |
+ | DataReelReportAgent service | -----------> | register.php  (first run)    |
  |  - collects the inventory  |  signed with | upload.php    (each report)  |
  |  - signs it with its key   |  the agent's | admin.php     (approve)      |
  +----------------------------+  machine key +------------------------------+
@@ -152,7 +152,7 @@ computers approved automatically (see [Server settings](#server-settings)).
 
 ## Installing the agent
 
-Run `windows_reporting_agent_setup_<version>.exe` as an administrator. The
+Run `drra_setup_<version>.exe` as an administrator. The
 setup asks for:
 
 - **Server host name** of the report server
@@ -163,8 +163,8 @@ setup asks for:
   `admin.php`
 - **HTTPS or HTTP**. Use HTTPS. HTTP is only for a test server.
 
-It installs to `C:\Program Files\WindowsReportAgent`, writes the settings
-to `windows_reporting_agent.ini` there, creates the `WindowsReportAgent`
+It installs to `C:\Program Files\DataReel\ReportingAgent`, writes the settings
+to `drra.ini` there, creates the `DataReelReportAgent`
 service (automatic start, restarts on failure) and starts it. The first
 report is sent right away.
 
@@ -174,7 +174,7 @@ For Group Policy, PDQ Deploy, a login script or any other software
 deployment tool, pass the settings on the command line:
 
 ```
-windows_reporting_agent_setup_3.2.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
+drra_setup_3.3.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
     /SERVER=reports.example.com /PORT=443 /URLPATH=/windows_reporting_agent/upload ^
     /TOKEN=<enrollment token>
 ```
@@ -186,11 +186,22 @@ install, so running a new version with only `/VERYSILENT` upgrades in place.
 ### Upgrading and uninstalling
 
 Run the new setup over the old one. It stops the service, replaces the
-programs, keeps `windows_reporting_agent.ini` and starts the service again.
+programs, keeps `drra.ini` and starts the service again.
+
+Releases up to 3.2 were called "Windows Reporting Agent" (service
+`WindowsReportAgent`, `C:\Program Files\WindowsReportAgent`,
+`C:\ProgramData\WindowsReportAgent`). Release 3.3 renamed everything to
+DataReel names so the agent is never mistaken for part of Windows. Its
+setup moves such an install over by itself: the settings (with their
+paths updated), the agent certificate, registration state and share
+password move to the new folders, the old service, uninstall entry and
+folders are removed, and the agent keeps its machine key, so it does not
+need to be approved again. If an Explorer window has the old folder
+open, the empty folder is removed at the next reboot.
 
 Uninstall from **Settings > Apps** or with `unins000.exe /VERYSILENT` in
 the install folder. The uninstaller removes the service and programs but
-keeps the INI file and `C:\ProgramData\WindowsReportAgent`, so a reinstall
+keeps the INI file and `C:\ProgramData\DataReel\ReportingAgent`, so a reinstall
 reuses the same key and does not need to be approved again. Delete those
 by hand to remove the agent completely.
 
@@ -202,7 +213,7 @@ and log in. Each registered computer is listed with its status, key
 fingerprint, registration time, last report and last address.
 
 - **Approve** a pending computer. Check first that its key fingerprint
-  matches the one in `C:\ProgramData\WindowsReportAgent\windows_report_agent.log`
+  matches the one in `C:\ProgramData\DataReel\ReportingAgent\drra.log`
   on that computer.
 - **Revoke** a computer to stop accepting its reports. It stays listed.
 - **Delete registration** when a computer is reinstalled or renamed. Its
@@ -211,7 +222,7 @@ fingerprint, registration time, last report and last address.
 
 ## Agent settings
 
-`windows_reporting_agent.ini` sits next to `windows_reporting_agent_svc.exe`.
+`drra.ini` sits next to `drra_svc.exe`.
 The service reads it again before every report, so changes take effect
 on the next cycle without a restart. Any setting left out uses its default.
 
@@ -228,18 +239,18 @@ on the next cycle without a restart. Any setting left out uses its default.
 | cifs | share | (empty) | UNC path such as `\\fileserver\reports` |
 | cifs | user | (empty) | Share login for sites without a Windows domain; save its password with `set-cifs-password` |
 | scp | host, port, user | (empty), `22`, (empty) | SSH server and account |
-| scp | key_file | `C:\ProgramData\WindowsReportAgent\id_ed25519` | Private key with no passphrase |
+| scp | key_file | `C:\ProgramData\DataReel\ReportingAgent\id_ed25519` | Private key with no passphrase |
 | scp | remote_dir | (empty) | Directory on the SSH server |
-| scp | known_hosts_file | `C:\ProgramData\WindowsReportAgent\known_hosts` | Host keys for the server |
+| scp | known_hosts_file | `C:\ProgramData\DataReel\ReportingAgent\known_hosts` | Host keys for the server |
 | scp | strict_host_key_checking | `yes` | `yes`, or `accept-new` to save the host key on the first connection |
 | scp | scp_path | `%SystemRoot%\System32\OpenSSH\scp.exe` | Path to `scp.exe` |
 | scp | timeout_seconds | `120` | Stop a hung transfer after this many seconds |
 | agent | report_interval_minutes | `45` | Minutes between reports |
-| agent | report_dir | `C:\ProgramData\WindowsReportAgent` | Where the report is written before delivery |
-| agent | log_file | `C:\ProgramData\WindowsReportAgent\windows_report_agent.log` | Result of the last delivery |
+| agent | report_dir | `C:\ProgramData\DataReel\ReportingAgent` | Where the report is written before delivery |
+| agent | log_file | `C:\ProgramData\DataReel\ReportingAgent\drra.log` | Result of the last delivery |
 | agent | users_dir | `C:\Users` | Folder listed in the USERS section |
 | agent | event_lookback_days | `30` | Days of Defender alerts to include |
-| agent | data_dir | `C:\ProgramData\WindowsReportAgent` | Agent certificate and registration state |
+| agent | data_dir | `C:\ProgramData\DataReel\ReportingAgent` | Agent certificate and registration state |
 
 ### CIFS share
 
@@ -252,11 +263,11 @@ share login: set `user=` in `[cifs]` and save the password from an
 administrator command prompt:
 
 ```
-"C:\Program Files\WindowsReportAgent\windows_reporting_agent_svc.exe" set-cifs-password
+"C:\Program Files\DataReel\ReportingAgent\drra_svc.exe" set-cifs-password
 ```
 
 It asks for the password and stores it encrypted with Windows DPAPI in
-`C:\ProgramData\WindowsReportAgent\cifs_password.dat`, which only SYSTEM
+`C:\ProgramData\DataReel\ReportingAgent\cifs_password.dat`, which only SYSTEM
 and Administrators can read. For unattended installs use the setup
 switches `/METHODS=cifs /CIFSSHARE=\\server\share /CIFSUSER=<user>
 /CIFSPASS=<password>`. Setup logs record the command line, so do not
@@ -273,8 +284,8 @@ SSH account's `authorized_keys`, and limit the private key to SYSTEM and
 Administrators:
 
 ```
-ssh-keygen -t ed25519 -N "" -f C:\ProgramData\WindowsReportAgent\id_ed25519
-icacls C:\ProgramData\WindowsReportAgent\id_ed25519 /inheritance:r /grant SYSTEM:F /grant Administrators:F
+ssh-keygen -t ed25519 -N "" -f C:\ProgramData\DataReel\ReportingAgent\id_ed25519
+icacls C:\ProgramData\DataReel\ReportingAgent\id_ed25519 /inheritance:r /grant SYSTEM:F /grant Administrators:F
 ```
 
 Add the server's host key to `known_hosts_file` (for example with
@@ -330,7 +341,7 @@ token is registered as pending.
   nonces, and always saves the report under the signing host's name, so
   one computer cannot overwrite another computer's report.
 - **On the computer:** the installer limits
-  `C:\ProgramData\WindowsReportAgent` to SYSTEM and Administrators, so
+  `C:\ProgramData\DataReel\ReportingAgent` to SYSTEM and Administrators, so
   users cannot read the reports or change the registration state.
 - **Transport:** use HTTPS. The signature protects the report from
   changes, but only TLS keeps the inventory private on the network.
@@ -392,7 +403,7 @@ Open a **x64 Native Tools Command Prompt for Visual Studio** (or run
 
 ```
 nmake               build the programs and the event message DLL
-nmake installer     build output\windows_reporting_agent_setup_<version>.exe
+nmake installer     build output\drra_setup_<version>.exe
 nmake clean
 ```
 
@@ -429,7 +440,7 @@ will report.
 
 ## Troubleshooting
 
-Look in `C:\ProgramData\WindowsReportAgent\windows_report_agent.log`
+Look in `C:\ProgramData\DataReel\ReportingAgent\drra.log`
 first. It has the result of the last report for each delivery method.
 
 | Log message | What to do |
