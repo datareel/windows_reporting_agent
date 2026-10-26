@@ -8,8 +8,11 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     exit;
 }
 
-function h($str) {
-    return htmlspecialchars((string)$str, ENT_QUOTES, 'UTF-8');
+// The dashboard login (login = drsm) brings its own h()
+if (!function_exists('h')) {
+    function h($str) {
+        return htmlspecialchars((string)$str, ENT_QUOTES, 'UTF-8');
+    }
 }
 
 function wra_page_start($title) {
@@ -70,7 +73,7 @@ footer { color:var(--muted); font-size:13px; text-align:center; padding:24px; }
 <body>
 <header class="top">
   <a class="brand" href="status.php">Windows Reporting Agent<small>Fleet status</small></a>
-  <nav><a href="status.php">Computers</a><?php if ($cfg['status']['public'] !== '1') { ?><a href="admin.php">Admin</a><?php } ?></nav>
+  <nav><a href="status.php">Computers</a><?php if ($cfg['status']['public'] !== '1') { ?><a href="admin.php">Admin</a><?php } ?><?php if ($cfg['admin']['login'] === 'drsm' && isset($GLOBALS['WWWvpath'])) { ?><a href="<?php echo h(rtrim($GLOBALS['WWWvpath'], '/') . '/'); ?>">Dashboard</a><?php } ?></nav>
 </header>
 <main>
 <?php if ($cfg['status']['public'] === '1') { ?>

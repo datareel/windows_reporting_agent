@@ -140,6 +140,13 @@ or change the admin login with:
 $ htpasswd -B /var/lib/windows_reporting_agent/admin.htpasswd admin
 ```
 
+If the pages sit under a DataReel System Monitor dashboard (for example
+`/dashboard/windows`), they can use the dashboard login instead of a
+separate one: add `--drsm-login <dashboard>/config/drsm.php` to
+`install_server.sh`. People signed in to the dashboard can then open
+`admin.php`, `status.php` and `report.php`, and anyone else is sent to the
+dashboard login and back.
+
 Last, set an enrollment token in `DATA_DIR/server.ini` if you want new
 computers approved automatically (see [Server settings](#server-settings)).
 
@@ -273,6 +280,8 @@ that `install_server.sh` sets in `.htaccess`, or at
 | upload | max_upload_bytes | `2000000` | Largest report accepted |
 | upload | max_clock_skew_seconds | `300` | Largest clock difference allowed between agent and server |
 | admin | require_remote_user | `1` | `admin.php`, `status.php` and `report.php` only run behind web server authentication |
+| admin | login | `basic` | `basic` for the web server login, or `drsm` to use the DataReel System Monitor dashboard login (the pages must be under the dashboard's web folder) |
+| admin | drsm_config | (empty) | With `login = drsm`: the dashboard's `config/drsm.php`, absolute or relative to the pages folder |
 | status | late_hours | `24` | A report older than this is late (warning) |
 | status | missing_days | `15` | A report older than this is missing (error) |
 | status | patch_max_age_days | `45` | Warn when the newest Windows update is older than this |

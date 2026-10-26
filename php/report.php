@@ -5,9 +5,9 @@
 // report file as text. Read only.
 
 require_once __DIR__ . '/wra_lib.php';
+define('WRA_AUTH_PAGE', 'status');
+require __DIR__ . '/wra_auth.php';
 require_once __DIR__ . '/wra_page.php';
-
-wra_require_viewer();
 $hostname = isset($_GET['host']) && is_string($_GET['host']) ? strtolower($_GET['host']) : '';
 if (!wra_valid_hostname($hostname) || !is_file(wra_report_path($hostname))) {
     http_response_code(404);

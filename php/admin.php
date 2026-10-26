@@ -12,23 +12,22 @@
 //   </Files>
 //
 // With require_remote_user = 1 (the default) the page refuses to run when
-// the web server has not authenticated the user.
+// the web server has not authenticated the user. With login = drsm in
+// server.ini it uses the DataReel System Monitor dashboard login instead,
+// see wra_auth.php.
 
 require_once __DIR__ . '/wra_lib.php';
 
 $cfg = wra_config();
-$admin_user = isset($_SERVER['REMOTE_USER']) ? $_SERVER['REMOTE_USER'] : '';
-if ($cfg['admin']['require_remote_user'] === '1' && $admin_user === '') {
-    http_response_code(403);
-    echo "admin.php must be protected by web server authentication (REMOTE_USER is not set).\n";
-    exit;
-}
-if ($admin_user === '') {
-    $admin_user = 'admin';
-}
+define('WRA_AUTH_PAGE', 'admin');
+require __DIR__ . '/wra_auth.php';
+$admin_user = $wra_viewer;
 
-function h($str) {
-    return htmlspecialchars((string)$str, ENT_QUOTES, 'UTF-8');
+// The dashboard login (login = drsm) brings its own h()
+if (!function_exists('h')) {
+    function h($str) {
+        return htmlspecialchars((string)$str, ENT_QUOTES, 'UTF-8');
+    }
 }
 
 session_start();

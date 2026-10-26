@@ -36,6 +36,14 @@ max_clock_skew_seconds = 300
 ; REMOTE_USER, for example from Apache AuthType Basic). Only set this to 0
 ; if access to admin.php is restricted some other way.
 require_remote_user = 1
+; basic = the web server login above (.htaccess AuthType Basic)
+; drsm  = the DataReel System Monitor dashboard login. The pages must be
+;         under the dashboard's web folder, for example
+;         /dashboard/windows/upload, so they share its session cookie.
+login = basic
+; With login = drsm: the dashboard's config/drsm.php, absolute or relative
+; to the pages folder, for example ../../config/drsm.php
+drsm_config =
 
 [status]
 ; Rules for status.php, the fleet status page

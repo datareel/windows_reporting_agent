@@ -27,6 +27,8 @@ function wra_config() {
         ),
         'admin' => array(
             'require_remote_user' => '1',
+            'login' => 'basic',
+            'drsm_config' => '',
         ),
         'status' => array(
             'late_hours' => '24',
@@ -436,19 +438,6 @@ function wra_reference_time() {
         return (int)$ref;
     }
     return time();
-}
-
-// The status pages need a login unless public = 1 (demo with sample data)
-function wra_require_viewer() {
-    $cfg = wra_config();
-    if ($cfg['status']['public'] === '1') {
-        return;
-    }
-    if ($cfg['admin']['require_remote_user'] === '1' && empty($_SERVER['REMOTE_USER'])) {
-        http_response_code(403);
-        echo "This page must be protected by web server authentication (REMOTE_USER is not set).\n";
-        exit;
-    }
 }
 
 function wra_age_text($seconds) {

@@ -5,9 +5,9 @@
 // required and unwanted programs). Read only.
 
 require_once __DIR__ . '/wra_lib.php';
+define('WRA_AUTH_PAGE', 'status');
+require __DIR__ . '/wra_auth.php';
 require_once __DIR__ . '/wra_page.php';
-
-wra_require_viewer();
 $cfg = wra_config();
 $now = wra_reference_time();
 
