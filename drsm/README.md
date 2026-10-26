@@ -11,6 +11,7 @@ Windows host:
 | `windows/defender` | Defender threat detections, real-time protection turned off, failed updates, old definitions |
 | `windows/patches` | Age of the newest Windows patch (warning after 45 days, error after 90) |
 | `windows/apps` | Required, forbidden and warning program lists |
+| `windows/resources` | CPU, memory, commit charge, disk space per drive and network use (agent 3.3 and later), with the same metrics as Linux hosts for the DRSM gauges and trends |
 
 Results show in the DRSM host reports, dashboard and email/text
 alerts like any other DRSM plugin. This replaces
