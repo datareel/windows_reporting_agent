@@ -336,7 +336,7 @@ def main():
         elif scen == "missing":
             report_time = args.now - rng.randint(16, 60) * 86400 - rng.randint(0, 80000)
         else:
-            report_time = args.now - rng.randint(60, 45 * 60)   # within the last 45 minutes
+            report_time = args.now - rng.randint(60, 15 * 60)   # within the last 15 minutes
         n_users = 1 if host.startswith("lt-") else rng.randint(1, 3)
         users = ["%s%02d" % (USER_PREFIX, next_user + i) for i in range(n_users)]
         next_user += n_users

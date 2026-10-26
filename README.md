@@ -51,7 +51,8 @@ with these sections:
 | INSTALLED WINDOWS PATCHES | Windows Update installation history |
 | HOT FIXES | Installed hotfixes from WMI (`Win32_QuickFixEngineering`) |
 
-The service sends a new report every 45 minutes by default.
+The service sends a new report every 15 minutes by default
+(`report_interval_minutes` in `drra.ini`, or `/INTERVAL=` in setup).
 
 ## How it works
 
@@ -179,7 +180,8 @@ drra_setup_3.3.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
     /TOKEN=<enrollment token>
 ```
 
-Add `/HTTP` for a plain HTTP test server and `/LOG=C:\path\setup.log` to
+Add `/INTERVAL=<minutes>` to change the report interval (default 15),
+`/HTTP` for a plain HTTP test server and `/LOG=C:\path\setup.log` to
 keep a setup log. Settings you leave out keep the values from an existing
 install, so running a new version with only `/VERYSILENT` upgrades in place.
 
@@ -245,7 +247,7 @@ on the next cycle without a restart. Any setting left out uses its default.
 | scp | strict_host_key_checking | `yes` | `yes`, or `accept-new` to save the host key on the first connection |
 | scp | scp_path | `%SystemRoot%\System32\OpenSSH\scp.exe` | Path to `scp.exe` |
 | scp | timeout_seconds | `120` | Stop a hung transfer after this many seconds |
-| agent | report_interval_minutes | `45` | Minutes between reports |
+| agent | report_interval_minutes | `15` | Minutes between reports |
 | agent | report_dir | `C:\ProgramData\DataReel\ReportingAgent` | Where the report is written before delivery |
 | agent | log_file | `C:\ProgramData\DataReel\ReportingAgent\drra.log` | Result of the last delivery |
 | agent | users_dir | `C:\Users` | Folder listed in the USERS section |

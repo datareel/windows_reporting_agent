@@ -116,7 +116,7 @@ DIAGRAM = """<svg class="diagram" viewBox="0 0 860 330" role="img" aria-labelled
 <text class="t" x="40" y="50">Windows computers</text>
 <text class="s" x="40" y="70">laptops, desktops, servers</text>
 <text class="m" x="40" y="98">DataReelReportAgent service</text>
-<text class="s" x="40" y="120">inventory every 45 minutes</text>
+<text class="s" x="40" y="120">inventory every 15 minutes</text>
 <text class="s" x="40" y="138">machine key + certificate</text>
 
 <rect class="box" x="370" y="20" width="250" height="150" rx="14"/>
@@ -180,7 +180,7 @@ page("index.html", "Overview",
 </div>
 
 <h2 id="how">How it works</h2>
-<p>The agent runs as the <code>DataReelReportAgent</code> service. Every 45 minutes it writes a plain text report and delivers it. On its first run it creates a key that cannot be exported and registers its certificate with the report server. After an admin approves the computer, or it sends the right enrollment token, every report it uploads is signed, and the server only accepts reports that are signed by the computer they claim to be from.</p>
+<p>The agent runs as the <code>DataReelReportAgent</code> service. Every 15 minutes (<code>report_interval_minutes</code>) it writes a plain text report and delivers it. On its first run it creates a key that cannot be exported and registers its certificate with the report server. After an admin approves the computer, or it sends the right enrollment token, every report it uploads is signed, and the server only accepts reports that are signed by the computer they claim to be from.</p>
 """ + DIAGRAM + """
 <p>The report can also, or instead, be copied to a Windows file share or to an SSH server. The reports are plain text files, one per computer, which the fleet status page and the <a href="https://datareel.com/info_drsm.php">DataReel System Monitor</a> read.</p>
 
@@ -249,6 +249,7 @@ page("install.html", "Install the agent",
     ["<code>/URLPATH=</code>", "Web path of the folder with <code>upload.php</code> and <code>register.php</code>"],
     ["<code>/TOKEN=</code>", "Enrollment token for automatic approval"],
     ["<code>/HTTP</code>", "Use plain HTTP (test servers only)"],
+    ["<code>/INTERVAL=</code>", "Minutes between reports, default 15"],
     ["<code>/LOG=C:\\path\\setup.log</code>", "Keep a setup log"],
 ]) + """
 <div class="callout"><p>Settings you leave out keep the values of an existing install, so a new version can be pushed out with only <code>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART</code>.</p></div>
@@ -263,7 +264,7 @@ page("install.html", "Install the agent",
             ("c", "Approved and sent:"),
             ("", "[https] Upload successful"),
             ("", "STATUS: ok")]) + """
-<p>To send a report now instead of waiting for the next cycle, run <code>send_test_report.exe</code> from an administrator command prompt in the install folder. It skips the patch and hotfix sections, which are slow to collect.</p>
+<p>To send a report now instead of waiting for the next 15-minute cycle, run <code>send_test_report.exe</code> from an administrator command prompt in the install folder. It skips the patch and hotfix sections, which are slow to collect.</p>
 
 <h2 id="upgrade">Upgrade</h2>
 <p>Run the new setup over the old one, interactively or with <code>/VERYSILENT</code>. It stops the service, replaces the programs, keeps <code>drra.ini</code> and starts the service again. The computer keeps its key, so it does not need to be approved again.</p>
@@ -393,7 +394,7 @@ AGENT_ROWS = [
     ["scp", "strict_host_key_checking", "yes", "<code>yes</code>, or <code>accept-new</code> to save the host key on the first connection"],
     ["scp", "scp_path", "%SystemRoot%\\System32\\OpenSSH\\scp.exe", "Path to <code>scp.exe</code>"],
     ["scp", "timeout_seconds", "120", "Stop a hung transfer"],
-    ["agent", "report_interval_minutes", "45", "Minutes between reports"],
+    ["agent", "report_interval_minutes", "15", "Minutes between reports, also setup <code>/INTERVAL=</code>"],
     ["agent", "report_dir", "C:\\ProgramData\\DataReel\\ReportingAgent", "Where the report is written before delivery"],
     ["agent", "log_file", "C:\\ProgramData\\DataReel\\ReportingAgent\\drra.log", "Result of the last delivery"],
     ["agent", "users_dir", "C:\\Users", "Folder listed in the USERS section"],

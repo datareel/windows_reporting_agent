@@ -49,7 +49,7 @@
 </div>
 
 <h2 id="how">How it works</h2>
-<p>The agent runs as the <code>DataReelReportAgent</code> service. Every 45 minutes it writes a plain text report and delivers it. On its first run it creates a key that cannot be exported and registers its certificate with the report server. After an admin approves the computer, or it sends the right enrollment token, every report it uploads is signed, and the server only accepts reports that are signed by the computer they claim to be from.</p>
+<p>The agent runs as the <code>DataReelReportAgent</code> service. Every 15 minutes (<code>report_interval_minutes</code>) it writes a plain text report and delivers it. On its first run it creates a key that cannot be exported and registers its certificate with the report server. After an admin approves the computer, or it sends the right enrollment token, every report it uploads is signed, and the server only accepts reports that are signed by the computer they claim to be from.</p>
 <svg class="diagram" viewBox="0 0 860 330" role="img" aria-labelledby="dg-t">
 <title id="dg-t">How the DataReel Reporting Agent works: each Windows computer runs the agent service, which registers its certificate and uploads signed reports to the PHP pages on a report server, or copies them to a file share or SSH server. The reports feed a status page, the admin page and DRSM.</title>
 <defs>
@@ -61,7 +61,7 @@
 <text class="t" x="40" y="50">Windows computers</text>
 <text class="s" x="40" y="70">laptops, desktops, servers</text>
 <text class="m" x="40" y="98">DataReelReportAgent service</text>
-<text class="s" x="40" y="120">inventory every 45 minutes</text>
+<text class="s" x="40" y="120">inventory every 15 minutes</text>
 <text class="s" x="40" y="138">machine key + certificate</text>
 
 <rect class="box" x="370" y="20" width="250" height="150" rx="14"/>

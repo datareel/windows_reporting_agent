@@ -9,7 +9,7 @@
 ;
 ;   drra_setup_3.3.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
 ;       /SERVER=reports.example.com /PORT=443 /URLPATH=/windows/upload
-;       /TOKEN=<enrollment token> [/HTTP]
+;       /TOKEN=<enrollment token> [/HTTP] [/INTERVAL=<minutes>]
 ;
 ; Delivery to a file share (CIFS) instead of, or next to, HTTPS:
 ;
@@ -22,7 +22,8 @@
 ; password is stored encrypted (DPAPI) in C:\ProgramData\DataReel\ReportingAgent.
 ;
 ; /URLPATH is the web path of the folder that holds upload.php and
-; register.php. /HTTP turns off HTTPS (test servers only). Settings not
+; register.php. /HTTP turns off HTTPS (test servers only). /INTERVAL sets
+; the minutes between reports (default 15). Settings not
 ; given keep the value from an existing install, or the default.
 ;
 ; Releases up to 3.2 were named "Windows Reporting Agent" (service
@@ -163,6 +164,8 @@ begin
   StringChangeEx(S, OldDataDir + '\windows_report_agent.log', ExpandConstant('{#DataDir}') + '\drra.log', True);
   StringChangeEx(S, OldDataDir, ExpandConstant('{#DataDir}'), True);
   StringChangeEx(S, '; Windows Reporting Agent settings', '; DataReel Reporting Agent for Windows: settings', True);
+  // 45 minutes was the 3.2 default, 3.3 reports every 15
+  StringChangeEx(S, 'report_interval_minutes=45', 'report_interval_minutes=15', True);
   if SaveStringToFile(Dest, AnsiString(S), False) then
     Log('Moved settings ' + Src + ' to ' + Dest)
   else
@@ -398,6 +401,8 @@ begin
     end;
 
     // Delivery methods and the file share, from the command line only
+    if ExpandConstant('{param:INTERVAL|}') <> '' then
+      SetIniString('agent', 'report_interval_minutes', ExpandConstant('{param:INTERVAL|}'), Ini);
     if ExpandConstant('{param:METHODS|}') <> '' then
       SetIniString('delivery', 'methods', ExpandConstant('{param:METHODS|}'), Ini);
     if ExpandConstant('{param:CIFSSHARE|}') <> '' then

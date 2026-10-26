@@ -172,7 +172,7 @@ void SetDefaultAgentConfig(AgentConfig &cfg)
   cfg.scp_known_hosts.clear();
   cfg.scp_host_key_check = "yes";
   cfg.scp_timeout_seconds = 120;
-  cfg.report_interval_minutes = 45;
+  cfg.report_interval_minutes = 15;
   cfg.report_dir = "C:\\ProgramData\\DataReel\\ReportingAgent";
   cfg.log_file = "C:\\ProgramData\\DataReel\\ReportingAgent\\drra.log";
   cfg.users_dir = "C:\\Users";

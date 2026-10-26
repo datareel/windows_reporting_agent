@@ -42,7 +42,7 @@
 <pre><code>drra_setup_3.3.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
     /SERVER=reports.example.com /PORT=443 /URLPATH=/windows_reporting_agent/upload ^
     /TOKEN=&lt;enrollment token&gt;</code></pre>
-<div class="table-wrap"><table><thead><tr><th>Switch</th><th>Meaning</th></tr></thead><tbody><tr><td><code>/SERVER=</code></td><td>Report server host name</td></tr><tr><td><code>/PORT=</code></td><td>Port, 443 for HTTPS</td></tr><tr><td><code>/URLPATH=</code></td><td>Web path of the folder with <code>upload.php</code> and <code>register.php</code></td></tr><tr><td><code>/TOKEN=</code></td><td>Enrollment token for automatic approval</td></tr><tr><td><code>/HTTP</code></td><td>Use plain HTTP (test servers only)</td></tr><tr><td><code>/LOG=C:\path\setup.log</code></td><td>Keep a setup log</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Switch</th><th>Meaning</th></tr></thead><tbody><tr><td><code>/SERVER=</code></td><td>Report server host name</td></tr><tr><td><code>/PORT=</code></td><td>Port, 443 for HTTPS</td></tr><tr><td><code>/URLPATH=</code></td><td>Web path of the folder with <code>upload.php</code> and <code>register.php</code></td></tr><tr><td><code>/TOKEN=</code></td><td>Enrollment token for automatic approval</td></tr><tr><td><code>/HTTP</code></td><td>Use plain HTTP (test servers only)</td></tr><tr><td><code>/INTERVAL=</code></td><td>Minutes between reports, default 15</td></tr><tr><td><code>/LOG=C:\path\setup.log</code></td><td>Keep a setup log</td></tr></tbody></table></div>
 <div class="callout"><p>Settings you leave out keep the values of an existing install, so a new version can be pushed out with only <code>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART</code>.</p></div>
 
 <h2 id="check">Check it works</h2>
@@ -55,7 +55,7 @@ pc-0142 with key fingerprint 8d3f5723...3aa16 on the admin page
 <span class="c">Approved and sent:</span>
 [https] Upload successful
 STATUS: ok</code></pre>
-<p>To send a report now instead of waiting for the next cycle, run <code>send_test_report.exe</code> from an administrator command prompt in the install folder. It skips the patch and hotfix sections, which are slow to collect.</p>
+<p>To send a report now instead of waiting for the next 15-minute cycle, run <code>send_test_report.exe</code> from an administrator command prompt in the install folder. It skips the patch and hotfix sections, which are slow to collect.</p>
 
 <h2 id="upgrade">Upgrade</h2>
 <p>Run the new setup over the old one, interactively or with <code>/VERYSILENT</code>. It stops the service, replaces the programs, keeps <code>drra.ini</code> and starts the service again. The computer keeps its key, so it does not need to be approved again.</p>
