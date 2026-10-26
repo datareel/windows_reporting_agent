@@ -42,7 +42,7 @@ void QueryRecentEvents() {
     // Level 4: Information
     // Level 5: Verbose
     // XPath query to get events after the calculated time
-    std::wstring query = L"Event[System[Level=1 or Level=2 or Level=3 and TimeCreated[@SystemTime > '" + 
+    std::wstring query = L"Event[System[(Level=1 or Level=2 or Level=3) and TimeCreated[@SystemTime > '" + 
                          std::wstring(timeFilter.begin(), timeFilter.end()) + L"']]]";
     
     // Querying the System log channel

@@ -787,7 +787,7 @@ int QueryRecentEvents(const std::wstring &channel, const std::wstring query, std
   // Level 4: Information
   // Level 5: Verbose
   // XPath query to get events after the calculated time
-  // std::wstring query = L"Event[System[Level=1 or Level=2 or Level=3 and TimeCreated[@SystemTime > '" + 
+  // std::wstring query = L"Event[System[(Level=1 or Level=2 or Level=3) and TimeCreated[@SystemTime > '" + 
   // std::wstring(timeFilter.begin(), timeFilter.end()) + L"']]]";
 
   int error_level = 0;
@@ -852,7 +852,7 @@ int get_windows_defender_alerts(std::string &output, int days)
   // Level 4: Information
   // Level 5: Verbose
   // XPath query to get events after the calculated time
-  std::wstring query = L"Event[System[Level=1 or Level=2 or Level=3 and TimeCreated[@SystemTime > '" + 
+  std::wstring query = L"Event[System[(Level=1 or Level=2 or Level=3) and TimeCreated[@SystemTime > '" + 
     std::wstring(timeFilter.begin(), timeFilter.end()) + L"']]]";
 
   int error_level = 0;
