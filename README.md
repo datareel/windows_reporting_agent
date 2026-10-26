@@ -259,7 +259,8 @@ It asks for the password and stores it encrypted with Windows DPAPI in
 `C:\ProgramData\WindowsReportAgent\cifs_password.dat`, which only SYSTEM
 and Administrators can read. For unattended installs use the setup
 switches `/METHODS=cifs /CIFSSHARE=\\server\share /CIFSUSER=<user>
-/CIFSPASS=<password>`. The
+/CIFSPASS=<password>`. Setup logs record the command line, so do not
+combine `/CIFSPASS=` with `/LOG`, or delete the log afterwards. The
 report is written under a temporary name and then renamed, so a reader
 never sees a partial file. CIFS and SCP deliveries do not use the
 certificate registration: access is controlled by the share permissions

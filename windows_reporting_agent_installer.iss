@@ -16,6 +16,8 @@
 ;       /METHODS=cifs /CIFSSHARE=\\fileserver\reports
 ;       [/CIFSUSER=<share user> /CIFSPASS=<password>]
 ;
+; Setup logs record the command line: do not combine /CIFSPASS with /LOG,
+; or delete the log afterwards.
 ; /CIFSUSER and /CIFSPASS are for shares outside a Windows domain. The
 ; password is stored encrypted (DPAPI) in C:\ProgramData\WindowsReportAgent.
 ;
