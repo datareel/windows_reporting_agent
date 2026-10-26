@@ -320,6 +320,16 @@ nmake installer     build output\windows_reporting_agent_setup_<version>.exe
 nmake clean
 ```
 
+`tools/gen_sample_fleet.py` writes a sample fleet of reports with made up
+hostnames, covering current, late and missing check-ins, empty and bad
+report files, computers behind on updates, missing and unwanted programs
+and Defender detections. Use it to try the status page or the DRSM
+plugins without real computers:
+
+```
+$ python3 tools/gen_sample_fleet.py --out /tmp/sample_fleet --count 48
+```
+
 `nmake installer` needs Inno Setup 6 in its default location,
 `C:\Program Files (x86)\Inno Setup 6`. `build.txt` lists the
 individual compiler commands and a manual service install for
