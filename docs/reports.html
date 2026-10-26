@@ -16,14 +16,14 @@
     <button class="tool icon-only menu-btn" type="button" data-action="menu" aria-label="Menu" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
     <a class="brand" href="index.html"><img src="images/logo.svg" alt="">Windows Reporting Agent <small>Documentation</small></a>
     <span class="spacer"></span>
-    
+    <a class="tool primary" href="https://datareel.com/windows_reporting_agent/demo/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>Live demo</span></a>
     <a class="tool hide-sm" href="https://datareel.com/downloads/windows_reporting_agent/"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Downloads</span></a>
     <button class="tool icon-only" type="button" data-action="theme" aria-label="Switch light or dark theme"><svg class="icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="icon moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
   </div>
 </header>
 <div class="layout">
   <nav class="sidebar" aria-label="Documentation">
-    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html" class="active" aria-current="page">Reports and status page</a><div class="toc"><a href="#format">Report format</a><a href="#sections">Sections</a><a href="#status">Fleet status page</a><a href="#drsm">DRSM</a></div><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html" class="active" aria-current="page">Reports and status page</a><div class="toc"><a href="#format">Report format</a><a href="#sections">Sections</a><a href="#status">Fleet status page</a><a href="#demo">Live demo</a><a href="#script">Status page script</a><a href="#drsm">DRSM</a></div><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/windows_reporting_agent/demo/">Live demo</a><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
   </nav>
   <main class="content" id="main">
 <h1>Reports and status page</h1>
@@ -52,14 +52,20 @@ END INSTALLED WINDOWS PATCHES</code></pre>
 <div class="table-wrap"><table><thead><tr><th>Section</th><th>Contents</th></tr></thead><tbody><tr><td>SERVICE TAG AND BARCODE</td><td>Service tag (BIOS serial number, the Dell service tag on Dell computers) and asset tag from WMI</td></tr><tr><td>IP ADDRESS</td><td>IPv4 addresses of the network adapters that are up</td></tr><tr><td>USERS</td><td>Profile folders in <code>users_dir</code></td></tr><tr><td>ALL INSTALLED PROGRAMS</td><td>Name and version of every program in the 64-bit and 32-bit uninstall registry keys</td></tr><tr><td>WINDOWS DEFENDER ALERTS</td><td>Critical, error and warning events from the Defender event log for <code>event_lookback_days</code></td></tr><tr><td>INSTALLED WINDOWS PATCHES</td><td>Windows Update installation history</td></tr><tr><td>HOT FIXES</td><td>Installed hotfixes from WMI (<code>Win32_QuickFixEngineering</code>)</td></tr></tbody></table></div>
 
 <h2 id="status">Fleet status page</h2>
-<p><code>bash/run_windows_laptop_inventory.sh</code> reads the reports and builds an HTML and a text page that list every computer by check-in state:</p>
-<ul>
-  <li>reported in the last 24 hours</li>
-  <li>reported in the last 15 days</li>
-  <li>not reported for more than 15 days, with the number of days</li>
-  <li>empty or unreadable report</li>
-</ul>
-<p>It also writes pass and fail lists. It uses the DRSM configuration (<code>~/.drsm.sh</code> or <code>$BASEdir/etc/drsm.sh</code>) and runs from cron on the report server. Set <code>SYSLOG_DIR</code> at the top of the script to your <code>reports_dir</code>.</p>
+<p><code>status.php</code> in the upload pages folder lists every computer with its state, worst first. See it on the <a href= + DEMO + >live demo</a>.</p>
+<div class="table-wrap"><table><thead><tr><th>State</th><th>When</th></tr></thead><tbody><tr><td><span class="badge">Needs attention</span></td><td>No report for <code>missing_days</code>, an empty or bad report, or a Windows Defender detection, failed action or disabled protection</td></tr><tr><td><span class="badge">Warning</span></td><td>A late report, Windows updates older than <code>patch_max_age_days</code>, a missing required program or an unwanted program</td></tr><tr><td><span class="badge">OK</span></td><td>None of the above</td></tr></tbody></table></div>
+<p>The tiles at the top filter the list, the column headers sort it, and the search box matches computer names, users, service tags, IP addresses and problems. <code>report.php?host=&lt;name&gt;</code> shows one computer: its problems, hardware, users, Defender events, installed programs with a filter, Windows updates, hotfixes and the report file. Both pages are read only and need the admin login. Set the rules in <code>server.ini</code>:</p>
+<pre><code>[status]
+required_apps = "Microsoft 365 Apps*, Google Chrome"
+required_apps_skip_hosts = "srv-*"
+unwanted_apps = "uTorrent*, CCleaner*"</code></pre>
+
+<h2 id="demo">Live demo and sample fleet</h2>
+<p><code>tools/gen_sample_fleet.py</code> writes reports for a made up fleet that covers every state: current, late and missing check-ins, empty and bad reports, computers behind on updates, missing and unwanted programs and Defender detections. <code>php/install_demo.sh</code> installs the status pages in a folder of their own with such a fleet and no login, which is how the <a href= + DEMO + >live demo</a> runs:</p>
+<pre><code><span class="p">$ </span>php/install_demo.sh --apply /var/www/html/windows_reporting_agent/demo</code></pre>
+
+<h2 id="script">Status page script</h2>
+<p><code>bash/run_windows_laptop_inventory.sh</code> is the original status page. It reads the reports and builds an HTML and a text page that list every computer by check-in state (reported in the last 24 hours, in the last 15 days, not for more than 15 days, or an empty or unreadable report) with pass and fail lists. It uses the DRSM configuration (<code>~/.drsm.sh</code> or <code>$BASEdir/etc/drsm.sh</code>) and runs from cron. Set <code>SYSLOG_DIR</code> at the top of the script to your <code>reports_dir</code>.</p>
 <pre><code><span class="c"># crontab: update the status page every 30 minutes</span>
 */30 * * * * $HOME/windows_reporting_agent/bash/run_windows_laptop_inventory.sh &gt; /dev/null 2&gt;&amp;1</code></pre>
 

@@ -36,3 +36,28 @@ max_clock_skew_seconds = 300
 ; REMOTE_USER, for example from Apache AuthType Basic). Only set this to 0
 ; if access to admin.php is restricted some other way.
 require_remote_user = 1
+
+[status]
+; Rules for status.php, the fleet status page
+; A report older than this is late (warning)
+late_hours = 24
+; A report older than this is missing (error)
+missing_days = 15
+; Warn when the newest Windows cumulative or security update is older
+; than this, counted from the report time
+patch_max_age_days = 45
+; Programs every computer must have, comma separated, * and ? wildcards
+; required_apps = "Microsoft 365 Apps*, Google Chrome"
+required_apps =
+; Computers the required_apps check skips, for example servers
+; required_apps_skip_hosts = "srv-*"
+required_apps_skip_hosts =
+; Programs no computer should have
+; unwanted_apps = "uTorrent*, CCleaner*"
+unwanted_apps =
+; 1 = status.php and report.php need no login. Only for a demo with
+; sample data: the reports are an inventory of your computers.
+public = 0
+; Measure report ages from this time instead of now: an epoch time, or
+; "fleet" for the time in reports_dir/fleet.json (gen_sample_fleet.py)
+reference_time =

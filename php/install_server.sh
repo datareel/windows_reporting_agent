@@ -6,7 +6,8 @@
 #
 #   WEB_DIR   Web directory for the pages, for example
 #             /var/www/html/windows_reporting_agent. The pages go in
-#             WEB_DIR/upload/ (register.php, upload.php, admin.php).
+#             WEB_DIR/upload/ (register.php, upload.php, admin.php,
+#             status.php, report.php).
 #   DATA_DIR  Directory for server.ini, agent registrations and reports.
 #             Best outside the web root. If it is inside WEB_DIR (common on
 #             shared hosting), a "Require all denied" .htaccess is added.
@@ -40,7 +41,7 @@ fi
 WEB_DIR="${1%/}"
 DATA_DIR="${2%/}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
-PAGES="register.php upload.php admin.php wra_lib.php"
+PAGES="register.php upload.php admin.php status.php report.php wra_lib.php wra_page.php"
 
 case "$WEB_DIR" in /*) ;; *) echo "WEB_DIR must be an absolute path"; exit 1 ;; esac
 case "$DATA_DIR" in /*) ;; *) echo "DATA_DIR must be an absolute path"; exit 1 ;; esac
@@ -87,17 +88,17 @@ write_file "${WEB_DIR}/upload/.htaccess" <<EOF
 SetEnv WRA_SERVER_INI ${DATA_DIR}/server.ini
 
 # Only included by the other pages
-<Files "wra_lib.php">
+<FilesMatch "^wra_(lib|page)\.php$">
     Require all denied
-</Files>
+</FilesMatch>
 
-# Admin page needs a login
-<Files "admin.php">
+# The admin and fleet status pages need a login
+<FilesMatch "^(admin|status|report)\.php$">
     AuthType Basic
     AuthName "Windows Reporting Agent admin"
     AuthUserFile ${DATA_DIR}/admin.htpasswd
     Require valid-user
-</Files>
+</FilesMatch>
 EOF
 
 case "${DATA_DIR}/" in

@@ -5,7 +5,7 @@ import os, sys
 
 OUT = sys.argv[1]
 DL = "https://datareel.com/downloads/windows_reporting_agent/"
-DEMO = None  # set when the live demo exists
+DEMO = "https://datareel.com/windows_reporting_agent/demo/"
 
 ICON_MENU = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>'
 ICON_DEMO = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>'
@@ -162,7 +162,8 @@ page("index.html", "Overview",
   <h1 style="margin-top:14px">Windows Reporting Agent</h1>
   <p class="lead">A small Windows service that sends a hardware, software, patch and Windows Defender inventory from every computer to your report server. Built for sites that need to know what is on their Windows computers but do not run SCCM/MCM, Intune or BigFix.</p>
   <div class="actions">
-    <a class="tool primary" href="install.html">Install the agent</a>
+    <a class="tool primary" href="" + DEMO + "">Open the live demo</a>
+    <a class="tool" href="install.html">Install the agent</a>
     <a class="tool" href="server.html">Set up the report server</a>
     <a class="tool" href="changelog.html">What's new</a>
   </div>
@@ -311,17 +312,17 @@ page("server.html", "Set up the report server",
 <p>The generated <code>upload/.htaccess</code> does three things:</p>
 """ + code([("", "SetEnv WRA_SERVER_INI /var/lib/windows_reporting_agent/server.ini"),
             ("", ""),
-            ("", '<Files "wra_lib.php">'),
+            ("", '<FilesMatch "^wra_(lib|page)\\.php$">'),
             ("", "    Require all denied"),
-            ("", "</Files>"),
+            ("", "</FilesMatch>"),
             ("", ""),
-            ("", '<Files "admin.php">'),
+            ("", '<FilesMatch "^(admin|status|report)\\.php$">'),
             ("", "    AuthType Basic"),
             ("", '    AuthName "Windows Reporting Agent admin"'),
             ("", "    AuthUserFile /var/lib/windows_reporting_agent/admin.htpasswd"),
             ("", "    Require valid-user"),
-            ("", "</Files>")]) + """
-<p>If you do not allow <code>.htaccess</code> files, put the same lines in a <code>&lt;Directory&gt;</code> block in the Apache configuration. <code>admin.php</code> refuses to run if the web server has not logged the user in, unless you set <code>require_remote_user = 0</code> in <code>server.ini</code>. Add or change admin logins with:</p>
+            ("", "</FilesMatch>")]) + """
+<p>If you do not allow <code>.htaccess</code> files, put the same lines in a <code>&lt;Directory&gt;</code> block in the Apache configuration. <code>admin.php</code>, <code>status.php</code> and <code>report.php</code> refuse to run if the web server has not logged the user in, unless you set <code>require_remote_user = 0</code> in <code>server.ini</code>. Add or change admin logins with:</p>
 """ + code([("$", "htpasswd -B /var/lib/windows_reporting_agent/admin.htpasswd admin")]) + """
 
 <h2 id="token">Enrollment token</h2>
@@ -406,7 +407,15 @@ SERVER_ROWS = [
     ["registration", "auto_approve_with_token", "1", "1 approves an agent with the right token, 0 still needs an admin"],
     ["upload", "max_upload_bytes", "2000000", "Largest report accepted"],
     ["upload", "max_clock_skew_seconds", "300", "Largest clock difference allowed between agent and server"],
-    ["admin", "require_remote_user", "1", "<code>admin.php</code> only runs behind web server authentication"],
+    ["admin", "require_remote_user", "1", "<code>admin.php</code>, <code>status.php</code> and <code>report.php</code> only run behind web server authentication"],
+    ["status", "late_hours", "24", "A report older than this is late (warning)"],
+    ["status", "missing_days", "15", "A report older than this is missing (error)"],
+    ["status", "patch_max_age_days", "45", "Warn when the newest Windows update is older than this"],
+    ["status", "required_apps", "", "Programs every computer must have, comma separated, <code>*</code> and <code>?</code> wildcards"],
+    ["status", "required_apps_skip_hosts", "", "Computers the required programs check skips, such as <code>srv-*</code>"],
+    ["status", "unwanted_apps", "", "Programs no computer should have"],
+    ["status", "public", "0", "1 lets the status pages run without a login. Only for a demo with sample data."],
+    ["status", "reference_time", "", "Measure report ages from this epoch time, or <code>fleet</code> for the sample fleet's time"],
 ]
 def setting_rows(rows):
     return [[r[0], "<code>%s</code>" % r[1], ("<code>%s</code>" % r[2]) if r[2].strip(" /") else "(empty)", r[3]] for r in rows]
@@ -441,7 +450,7 @@ page("configuration.html", "Configuration",
 # ---------------------------------------------------------------- reports
 page("reports.html", "Reports and status page",
      "The Windows Reporting Agent report format and the fleet status page built from the reports.",
-     [("format", "Report format"), ("sections", "Sections"), ("status", "Fleet status page"), ("drsm", "DRSM")],
+     [("format", "Report format"), ("sections", "Sections"), ("status", "Fleet status page"), ("demo", "Live demo"), ("script", "Status page script"), ("drsm", "DRSM")],
      """
 <h1>Reports and status page</h1>
 <p class="lead">Each computer's report is a plain text file, easy to read, grep and diff. The server keeps the latest one per computer.</p>
@@ -477,14 +486,24 @@ page("reports.html", "Reports and status page",
 ]) + """
 
 <h2 id="status">Fleet status page</h2>
-<p><code>bash/run_windows_laptop_inventory.sh</code> reads the reports and builds an HTML and a text page that list every computer by check-in state:</p>
-<ul>
-  <li>reported in the last 24 hours</li>
-  <li>reported in the last 15 days</li>
-  <li>not reported for more than 15 days, with the number of days</li>
-  <li>empty or unreadable report</li>
-</ul>
-<p>It also writes pass and fail lists. It uses the DRSM configuration (<code>~/.drsm.sh</code> or <code>$BASEdir/etc/drsm.sh</code>) and runs from cron on the report server. Set <code>SYSLOG_DIR</code> at the top of the script to your <code>reports_dir</code>.</p>
+<p><code>status.php</code> in the upload pages folder lists every computer with its state, worst first. See it on the <a href="""" + DEMO + """">live demo</a>.</p>
+""" + table(["State", "When"], [
+    ['<span class="badge">Needs attention</span>', "No report for <code>missing_days</code>, an empty or bad report, or a Windows Defender detection, failed action or disabled protection"],
+    ['<span class="badge">Warning</span>', "A late report, Windows updates older than <code>patch_max_age_days</code>, a missing required program or an unwanted program"],
+    ['<span class="badge">OK</span>', "None of the above"],
+]) + """
+<p>The tiles at the top filter the list, the column headers sort it, and the search box matches computer names, users, service tags, IP addresses and problems. <code>report.php?host=&lt;name&gt;</code> shows one computer: its problems, hardware, users, Defender events, installed programs with a filter, Windows updates, hotfixes and the report file. Both pages are read only and need the admin login. Set the rules in <code>server.ini</code>:</p>
+""" + code([("", "[status]"),
+            ("", 'required_apps = "Microsoft 365 Apps*, Google Chrome"'),
+            ("", 'required_apps_skip_hosts = "srv-*"'),
+            ("", 'unwanted_apps = "uTorrent*, CCleaner*"')]) + """
+
+<h2 id="demo">Live demo and sample fleet</h2>
+<p><code>tools/gen_sample_fleet.py</code> writes reports for a made up fleet that covers every state: current, late and missing check-ins, empty and bad reports, computers behind on updates, missing and unwanted programs and Defender detections. <code>php/install_demo.sh</code> installs the status pages in a folder of their own with such a fleet and no login, which is how the <a href="""" + DEMO + """">live demo</a> runs:</p>
+""" + code([("$", "php/install_demo.sh --apply /var/www/html/windows_reporting_agent/demo")]) + """
+
+<h2 id="script">Status page script</h2>
+<p><code>bash/run_windows_laptop_inventory.sh</code> is the original status page. It reads the reports and builds an HTML and a text page that list every computer by check-in state (reported in the last 24 hours, in the last 15 days, not for more than 15 days, or an empty or unreadable report) with pass and fail lists. It uses the DRSM configuration (<code>~/.drsm.sh</code> or <code>$BASEdir/etc/drsm.sh</code>) and runs from cron. Set <code>SYSLOG_DIR</code> at the top of the script to your <code>reports_dir</code>.</p>
 """ + code([("c", "# crontab: update the status page every 30 minutes"),
             ("", "*/30 * * * * $HOME/windows_reporting_agent/bash/run_windows_laptop_inventory.sh > /dev/null 2>&1")]) + """
 
@@ -566,8 +585,9 @@ page("building.html", "Build from source",
     ["<code>windows_reporting_agent.mc</code>", "Event log message DLL"],
     ["<code>windows_reporting_agent_installer.iss</code>", "Inno Setup script"],
     ["<code>windows_reporting_agent.ini</code>", "Default settings, with comments"],
-    ["<code>php/</code>", "<code>register.php</code>, <code>upload.php</code>, <code>admin.php</code>, <code>wra_lib.php</code>, <code>install_server.sh</code>, <code>server.ini.example</code>"],
-    ["<code>bash/</code>", "Fleet status page script"],
+    ["<code>php/</code>", "<code>register.php</code>, <code>upload.php</code>, <code>admin.php</code>, <code>status.php</code>, <code>report.php</code>, <code>wra_lib.php</code>, <code>wra_page.php</code>, <code>install_server.sh</code>, <code>install_demo.sh</code>, <code>server.ini.example</code>"],
+    ["<code>bash/</code>", "Original fleet status page script"],
+    ["<code>tools/</code>", "<code>gen_docs.py</code> for these pages, <code>gen_sample_fleet.py</code> for sample reports"],
 ]) + """
 
 <h2 id="dev">Development install</h2>
@@ -627,6 +647,7 @@ page("changelog.html", "What's new",
   <li><strong>Settings file:</strong> every setting is in <code>windows_reporting_agent.ini</code> instead of the program code. The service reads it before each report.</li>
   <li><strong>More delivery methods:</strong> a Windows file share (CIFS) and SCP, alone or next to HTTPS.</li>
   <li><strong>Installer:</strong> a 64-bit setup.exe with server settings pages and command line switches for silent installs, upgrades that keep the settings, a restart-on-failure service, and an agent data folder limited to SYSTEM and Administrators.</li>
+  <li><strong>Fleet status pages:</strong> <code>status.php</code> and <code>report.php</code> check every computer's last report for late check-ins, old Windows updates, Defender problems, and required and unwanted programs, with a <a href="""" + DEMO + """">live demo</a> on a sample fleet.</li>
   <li><strong>Server install script:</strong> <code>install_server.sh</code> sets up the PHP pages, <code>.htaccess</code>, admin login and data folder, with a dry run first.</li>
   <li><strong>Fixes:</strong> the Defender alert query now only returns the last 30 days (critical and error events from all time were included before); HTTP errors from the server are reported instead of counted as success; WinINet errors show their message.</li>
   <li><strong>Defaults:</strong> the report and log moved from <code>C:\\</code> to <code>C:\\ProgramData\\WindowsReportAgent</code>.</li>

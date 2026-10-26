@@ -108,7 +108,8 @@ $ sudo ./install_server.sh --apply --admin-user admin \
 ```
 
 - `WEB_DIR` (first argument) gets an `upload` folder with `register.php`,
-  `upload.php`, `admin.php` and `wra_lib.php`.
+  `upload.php`, `admin.php`, `status.php`, `report.php`, `wra_lib.php`
+  and `wra_page.php`.
 - `DATA_DIR` (second argument) holds `server.ini`, the agent registrations,
   replay protection data, the admin password file, and the reports in
   `DATA_DIR/reports`. Keep it outside the web root when you can. On shared
@@ -131,7 +132,8 @@ With SELinux enforcing (RHEL, Rocky, Alma, Fedora), also label it:
 The `.htaccess` file needs `AllowOverride All` (or at least `FileInfo
 AuthConfig Limit`) for the directory in the Apache configuration. It sets
 `WRA_SERVER_INI` to point at `DATA_DIR/server.ini`, blocks direct access
-to `wra_lib.php`, and puts `admin.php` behind a Basic auth login. Create
+to `wra_lib.php` and `wra_page.php`, and puts `admin.php`, `status.php`
+and `report.php` behind a Basic auth login. Create
 or change the admin login with:
 
 ```
@@ -270,7 +272,18 @@ that `install_server.sh` sets in `.htaccess`, or at
 | registration | auto_approve_with_token | `1` | `1` approves an agent with the right token, `0` still needs an admin |
 | upload | max_upload_bytes | `2000000` | Largest report accepted |
 | upload | max_clock_skew_seconds | `300` | Largest clock difference allowed between agent and server |
-| admin | require_remote_user | `1` | `admin.php` only runs behind web server authentication |
+| admin | require_remote_user | `1` | `admin.php`, `status.php` and `report.php` only run behind web server authentication |
+| status | late_hours | `24` | A report older than this is late (warning) |
+| status | missing_days | `15` | A report older than this is missing (error) |
+| status | patch_max_age_days | `45` | Warn when the newest Windows update is older than this |
+| status | required_apps | (empty) | Programs every computer must have, comma separated, `*` and `?` wildcards |
+| status | required_apps_skip_hosts | (empty) | Computers the required programs check skips, such as `srv-*` |
+| status | unwanted_apps | (empty) | Programs no computer should have |
+| status | public | `0` | `1` lets the status pages run without a login. Only for a demo with sample data |
+| status | reference_time | (empty) | Measure report ages from this epoch time, or `fleet` for the sample fleet's time |
+
+Relative paths work too: `WRA_SERVER_INI` relative to the pages folder,
+and `reports_dir` and `data_dir` relative to `server.ini`.
 
 An agent that sends a wrong token is refused. An agent that sends no
 token is registered as pending.
@@ -301,7 +314,45 @@ token is registered as pending.
 
 ## The fleet status page
 
-`bash/run_windows_laptop_inventory.sh` reads the reports directory and
+`status.php` lists every computer with its state, worst first:
+
+- **Needs attention:** no report for `missing_days`, an empty or bad
+  report, or a Windows Defender detection, failed action or disabled
+  protection
+- **Warning:** a late report, Windows updates older than
+  `patch_max_age_days`, a missing required program or an unwanted program
+- **OK:** none of the above
+
+The tiles at the top filter the list, and the search box matches
+computer names, users, service tags, IP addresses and problems.
+`report.php?host=<name>` shows one computer's report: problems,
+hardware, users, Defender events, installed programs (with a filter),
+Windows updates and hotfixes, and a link to the report file. Both pages
+are read only and behind the admin login. Set the rules in the
+`[status]` section of `server.ini`, for example:
+
+```
+[status]
+required_apps = "Microsoft 365 Apps*, Google Chrome"
+required_apps_skip_hosts = "srv-*"
+unwanted_apps = "uTorrent*, CCleaner*"
+```
+
+### Live demo
+
+`php/install_demo.sh` installs `status.php` and `report.php` in a
+folder of their own with a sample fleet from `tools/gen_sample_fleet.py`
+and no login, as on <https://datareel.com/windows_reporting_agent/demo/>.
+It is a dry run unless you add `--apply`:
+
+```
+$ php/install_demo.sh --apply /var/www/html/windows_reporting_agent/demo
+```
+
+### Status page script
+
+`bash/run_windows_laptop_inventory.sh` is the original status page:
+it reads the reports directory and
 builds an HTML and text status page: how many computers reported in the
 last 24 hours, in the last 15 days, not at all, or sent an empty or bad
 report. It uses the DRSM configuration (`~/.drsm.sh` or
