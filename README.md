@@ -435,7 +435,16 @@ HTTPS on another server have to be copied over.
 | `windows/defender` | Defender threats, protection turned off, old definitions |
 | `windows/patches` | Age of the newest Windows patch |
 | `windows/apps` | Required and forbidden programs |
-| `windows/resources` | CPU, memory, disk and network from the usage sections, for the trends page (DRSM release after 1.31) |
+| `windows/resources` | CPU, memory, disk and network from the usage sections, for the gauges and trends page |
+
+DRSM 1.32-beta2 and later include these plugins. For DRSM 1.31, the
+`drsm/` folder of this distribution has the same plugins and an
+installer that only lists what it would copy until run with `--apply`:
+
+```
+$ drsm/install.sh            # dry run
+$ drsm/install.sh --apply    # copies into ~/drsm, or -t <DRSMHOME>
+```
 
 ```
 # DRSM etc/hosts/_defaults.conf

@@ -553,7 +553,7 @@ page("reports.html", "Reports and status page",
             ("", "COLLECTOR=wra"),
             ("", 'PROBES=""'),
             ("", 'PLUGINS="windows/checkin windows/defender windows/patches windows/apps windows/resources"')]) + """
-<p>See the DRSM documentation for the plugin settings. <code>windows/resources</code> needs the DRSM release after 1.31.</p>
+<p>DRSM 1.32-beta2 and later include these plugins. For DRSM 1.31, the <code>drsm/</code> folder of this distribution has the same plugins and an installer, <code>drsm/install.sh</code>, that only lists what it would copy until run with <code>--apply</code> (add <code>-t</code> and the DRSM folder if it is not <code>~/drsm</code>). See the DRSM documentation for the plugin settings.</p>
 """)
 
 # ---------------------------------------------------------------- security
