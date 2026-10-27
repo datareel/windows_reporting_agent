@@ -208,7 +208,7 @@ For Group Policy, PDQ Deploy, a login script or any other software
 deployment tool, pass the settings on the command line:
 
 ```
-drra_setup_3.3.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
+drra_setup_3.3-beta1.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
     /SERVER=reports.example.com /PORT=443 /URLPATH=/windows_reporting_agent/upload ^
     /TOKEN=<enrollment token>
 ```

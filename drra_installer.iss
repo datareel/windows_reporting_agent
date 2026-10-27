@@ -7,7 +7,7 @@
 ; The setup asks for the report server on a wizard page. For unattended
 ; installs (GPO, PDQ, a login script) pass the settings on the command line:
 ;
-;   drra_setup_3.3.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+;   drra_setup_3.3-beta1.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
 ;       /SERVER=reports.example.com /PORT=443 /URLPATH=/windows/upload
 ;       /TOKEN=<enrollment token> [/HTTP] [/INTERVAL=<minutes>]
 ;
@@ -32,7 +32,9 @@
 ; password and machine key are kept, the old service and folders are
 ; removed.
 
-#define AppVersion "3.3"
+#define AppVersion "3.3-beta1"
+; Windows file versions must be numbers
+#define FileVersion "3.3.0.0"
 #define SvcName "DataReelReportAgent"
 #define AppTitle "DataReel Reporting Agent"
 #define DataDir "{commonappdata}\DataReel\ReportingAgent"
@@ -54,6 +56,8 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputBaseFilename=drra_setup_{#AppVersion}
+VersionInfoVersion={#FileVersion}
+VersionInfoProductTextVersion={#AppVersion}
 OutputDir=output
 LicenseFile=LICENSE
 Compression=lzma2

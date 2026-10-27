@@ -97,7 +97,7 @@ def page(fname, title, desc, toc, body):
 <nav class="pager" aria-label="Previous and next page">%(pager)s</nav>
   </main>
 </div>
-<footer class="foot">DataReel Reporting Agent for Windows 3.3 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+<footer class="foot">DataReel Reporting Agent for Windows 3.3 beta 1 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
 </body>
 </html>
 """ % dict(full_title=full_title, desc=desc, menu=ICON_MENU, demo=demo_btn, dl=DL, dlicon=ICON_DL,
@@ -228,7 +228,7 @@ page("install.html", "Install the agent",
 ]) + """
 
 <h2 id="setup">Run the setup</h2>
-<p>Download <code>drra_setup_3.3.exe</code> from the <a href=\"""" + DL + """">downloads page</a> and run it as an administrator. After the license and install folder pages it asks for the report server:</p>
+<p>Download <code>drra_setup_3.3-beta1.exe</code> from the <a href=\"""" + DL + """">downloads page</a> and run it as an administrator. After the license and install folder pages it asks for the report server:</p>
 """ + table(["Field", "Example", "Notes"], [
     ["Server host name", "<code>reports.example.com</code>", "The web server that runs the PHP pages"],
     ["Port", "<code>443</code>", "443 for HTTPS"],
@@ -240,7 +240,7 @@ page("install.html", "Install the agent",
 
 <h2 id="silent">Unattended installs</h2>
 <p>For Group Policy, PDQ Deploy, a login script or any other deployment tool, pass the settings on the command line:</p>
-""" + code([("", "drra_setup_3.3.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^"),
+""" + code([("", "drra_setup_3.3-beta1.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^"),
             ("", "    /SERVER=reports.example.com /PORT=443 /URLPATH=/windows_reporting_agent/upload ^"),
             ("", "    /TOKEN=<enrollment token>")]) + """
 """ + table(["Switch", "Meaning"], [
@@ -476,7 +476,7 @@ page("reports.html", "Reports and status page",
 <h2 id="format">Report format</h2>
 <p>Reports are saved as <code>&lt;hostname&gt;_windows_report_agent.txt</code> in <code>reports_dir</code>. The header lines are <code>KEY: value</code> pairs, and each section starts with its name and a colon and ends with <code>END</code> and the name:</p>
 """ + code([("", "DataReel Reporting Agent report from host pc-0142"),
-            ("", "VERSION: 3.3"),
+            ("", "VERSION: 3.3-beta1"),
             ("", "HOSTNAME: pc-0142"),
             ("", "ETIME: 1792971236"),
             ("", "DATETIME: Sun Oct 25 19:33:56 2026"),
@@ -619,7 +619,7 @@ page("building.html", "Build from source",
 <h2 id="build">Build</h2>
 <p>Open an <strong>x64 Native Tools Command Prompt for VS</strong> (or run <code>vcvars64.bat</code>) in the source folder:</p>
 """ + code([("", "nmake               rem programs and the event message DLL"),
-            ("", "nmake installer     rem output\\drra_setup_3.3.exe"),
+            ("", "nmake installer     rem output\\drra_setup_3.3-beta1.exe"),
             ("", "nmake clean")]) + """
 
 <h2 id="files">Source files</h2>
@@ -683,13 +683,13 @@ page("troubleshooting.html", "Troubleshooting",
 # ---------------------------------------------------------------- changelog
 page("changelog.html", "What's new",
      "DataReel Reporting Agent for Windows release history.",
-     [("v33", "Release 3.3")],
+     [("v33", "Release 3.3 beta 1")],
      """
 <h1>What's new</h1>
-<p class="lead">Release 3.3 is the first public release of the DataReel Reporting Agent for Windows.</p>
+<p class="lead">Release 3.3 beta 1 (3.3-beta1) is the first public release of the DataReel Reporting Agent for Windows. It is a beta: test it on a few computers before a wide rollout.</p>
 
-<h2 id="v33">Release 3.3 <span class="badge new">October 2026</span></h2>
-<p>Release 3.3 turns an in-house tool, written for a deployment of 120 laptops, into a package anyone can install.</p>
+<h2 id="v33">Release 3.3 beta 1 <span class="badge new">October 2026</span></h2>
+<p>Release 3.3 beta 1 turns an in-house tool, written for a deployment of 120 laptops, into a package anyone can install.</p>
 <ul>
   <li><strong>Signed uploads:</strong> each computer registers a certificate for a non-exportable machine key before it sends anything, and every report is signed. The server checks the signature, the approval state, the time and a one time nonce.</li>
   <li><strong>Admin page:</strong> approve, revoke and delete computers and reports, with a login and CSRF protection. It can use the DataReel System Monitor dashboard login (<code>login = drsm</code>).</li>
