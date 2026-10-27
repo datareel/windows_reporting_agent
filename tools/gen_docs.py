@@ -162,7 +162,7 @@ page("index.html", "Overview",
   <h1 style="margin-top:14px">DataReel Reporting Agent</h1>
   <p class="lead">A small Windows service that sends a hardware, software, patch and Windows Defender inventory from every computer to your report server. Built for sites that need to know what is on their Windows computers but do not run SCCM/MCM, Intune or BigFix.</p>
   <div class="actions">
-    <a class="tool primary" href="" + DEMO + "">Open the live demo</a>
+    <a class="tool primary" href="https://datareel.com/windows_reporting_agent/demo/">Open the live demo</a>
     <a class="tool" href="install.html">Install the agent</a>
     <a class="tool" href="server.html">Set up the report server</a>
     <a class="tool" href="changelog.html">What's new</a>
@@ -249,6 +249,9 @@ page("install.html", "Install the agent",
     ["<code>/URLPATH=</code>", "Web path of the folder with <code>upload.php</code> and <code>register.php</code>"],
     ["<code>/TOKEN=</code>", "Enrollment token for automatic approval"],
     ["<code>/HTTP</code>", "Use plain HTTP (test servers only)"],
+    ["<code>/METHODS=</code>", "Delivery methods, for example <code>cifs</code> or <code>https,cifs</code>"],
+    ["<code>/CIFSSHARE=</code>", "File share, for example <code>\\\\fileserver\\reports</code>"],
+    ["<code>/CIFSUSER=</code>, <code>/CIFSPASS=</code>", "Share login for shares outside a Windows domain. The password is stored encrypted. Setup logs record the command line, so do not combine <code>/CIFSPASS=</code> with <code>/LOG=</code>"],
     ["<code>/INTERVAL=</code>", "Minutes between reports, default 15"],
     ["<code>/LOG=C:\\path\\setup.log</code>", "Keep a setup log"],
 ]) + """
@@ -268,6 +271,7 @@ page("install.html", "Install the agent",
 
 <h2 id="upgrade">Upgrade</h2>
 <p>Run the new setup over the old one, interactively or with <code>/VERYSILENT</code>. It stops the service, replaces the programs, keeps <code>drra.ini</code> and starts the service again. The computer keeps its key, so it does not need to be approved again.</p>
+<p>Earlier test builds were called Windows Reporting Agent, with the service <code>WindowsReportAgent</code> in <code>C:\\Program Files\\WindowsReportAgent</code>. Setup moves such an install over by itself: the settings (with their paths changed and the old 45-minute default changed to 15), the certificate, registration state, share password and machine key move to the DataReel names, and the old service, uninstall entry, event log source and folders are removed. If an Explorer window has the old folder open, the empty folder is deleted at the next reboot.</p>
 
 <h2 id="uninstall">Uninstall</h2>
 <p>Use <strong>Settings &gt; Apps</strong>, or run <code>unins000.exe /VERYSILENT</code> in the install folder. The service and programs are removed. The INI file and <code>C:\\ProgramData\\DataReel\\ReportingAgent</code> are kept, so a reinstall reuses the same key and settings. Delete them by hand to remove the agent completely, and delete the computer's registration on the <a href="approve.html">admin page</a>.</p>
@@ -276,7 +280,7 @@ page("install.html", "Install the agent",
 # ---------------------------------------------------------------- server
 page("server.html", "Set up the report server",
      "Install the DataReel Reporting Agent PHP pages on Apache, set the permissions, protect the admin page and set the enrollment token.",
-     [("requirements", "Requirements"), ("install", "Install the pages"), ("permissions", "Permissions"), ("apache", "Apache"), ("token", "Enrollment token"), ("shared", "Shared hosting"), ("https", "HTTPS")],
+     [("requirements", "Requirements"), ("install", "Install the pages"), ("permissions", "Permissions"), ("apache", "Apache"), ("drsm", "DRSM dashboard login"), ("token", "Enrollment token"), ("shared", "Shared hosting"), ("https", "HTTPS")],
      """
 <h1>Set up the report server</h1>
 <p class="lead">The server side is four PHP files and a data directory. <code>install_server.sh</code> puts them in place. Plan on about 15 minutes.</p>
@@ -326,6 +330,12 @@ page("server.html", "Set up the report server",
 <p>If you do not allow <code>.htaccess</code> files, put the same lines in a <code>&lt;Directory&gt;</code> block in the Apache configuration. <code>admin.php</code>, <code>status.php</code> and <code>report.php</code> refuse to run if the web server has not logged the user in, unless you set <code>require_remote_user = 0</code> in <code>server.ini</code>. Add or change admin logins with:</p>
 """ + code([("$", "htpasswd -B /var/lib/windows_reporting_agent/admin.htpasswd admin")]) + """
 
+<h2 id="drsm">DRSM dashboard login</h2>
+<p>If the pages sit under a <a href="https://datareel.com/info_drsm.php">DataReel System Monitor</a> dashboard, for example in <code>/dashboard/windows</code>, they can use the dashboard login instead of a separate one. Install them with <code>--drsm-login</code> and the dashboard's config file:</p>
+""" + code([("$", "./install_server.sh --apply --drsm-login ../../config/drsm.php \\"),
+            ("", "      /var/www/html/dashboard/windows /var/www/html/dashboard/windows/data")]) + """
+<p>This sets <code>login = drsm</code> and <code>drsm_config</code> in <code>server.ini</code> and leaves the Basic login out of <code>.htaccess</code>. People signed in to the dashboard open <code>admin.php</code>, <code>status.php</code> and <code>report.php</code> directly; anyone else goes to the dashboard login and back. Admin actions record the dashboard user name. Internal networks and a dashboard with its login turned off behave as they do on the dashboard. <code>register.php</code> and <code>upload.php</code> stay open to the agents.</p>
+
 <h2 id="token">Enrollment token</h2>
 <p>Without a token, every new computer waits on the <a href="approve.html">admin page</a> until you approve it. To approve computers automatically, set a long random token in <code>DATA_DIR/server.ini</code> and give the same token to the setup:</p>
 """ + code([("$", "openssl rand -hex 24"),
@@ -355,7 +365,7 @@ page("approve.html", "Approve computers",
 <p class="lead">A computer only sends reports after the server approves its certificate. Approve it on the admin page, or automatically with an <a href="server.html#token">enrollment token</a>.</p>
 
 <h2 id="page">The admin page</h2>
-<p>Open <code>admin.php</code> in the upload pages folder, for example <code>https://reports.example.com/windows_reporting_agent/upload/admin.php</code>, and log in. It lists every registered computer with its status, key fingerprint, registration and approval times, last report and last address, and the reports on disk that have no registration.</p>
+<p>Open <code>admin.php</code> in the upload pages folder, for example <code>https://reports.example.com/windows_reporting_agent/upload/admin.php</code>, and log in, with the web server login or, with <code>login = drsm</code>, the <a href="server.html#drsm">DRSM dashboard login</a>. It lists every registered computer with its status, key fingerprint, registration and approval times, last report and last address, and the reports on disk that have no registration.</p>
 
 <h2 id="states">States</h2>
 """ + table(["Status", "Meaning"], [
@@ -387,6 +397,7 @@ AGENT_ROWS = [
     ["https", "ignore_cert_revocation", "1", "Skip the CRL/OCSP check, for networks that block CRL servers (WinINet error 12057)"],
     ["https", "enrollment_token", "", "Token from the server's <code>server.ini</code>"],
     ["cifs", "share", "", "UNC path such as <code>\\\\fileserver\\reports</code>"],
+    ["cifs", "user", "", "Share login for shares outside a Windows domain; save the password with <code>set-cifs-password</code>"],
     ["scp", "host / port / user", " / 22 / ", "SSH server and account"],
     ["scp", "key_file", "C:\\ProgramData\\DataReel\\ReportingAgent\\id_ed25519", "Private key with no passphrase"],
     ["scp", "remote_dir", "", "Directory on the SSH server"],
@@ -409,6 +420,8 @@ SERVER_ROWS = [
     ["upload", "max_upload_bytes", "2000000", "Largest report accepted"],
     ["upload", "max_clock_skew_seconds", "300", "Largest clock difference allowed between agent and server"],
     ["admin", "require_remote_user", "1", "<code>admin.php</code>, <code>status.php</code> and <code>report.php</code> only run behind web server authentication"],
+    ["admin", "login", "basic", "<code>basic</code> for the web server login, <code>drsm</code> for the DataReel System Monitor dashboard login"],
+    ["admin", "drsm_config", "", "With <code>login = drsm</code>: the dashboard's <code>config/drsm.php</code>, absolute or relative to the pages folder"],
     ["status", "late_hours", "24", "A report older than this is late (warning)"],
     ["status", "missing_days", "15", "A report older than this is missing (error)"],
     ["status", "patch_max_age_days", "45", "Warn when the newest Windows update is older than this"],
@@ -435,6 +448,10 @@ page("configuration.html", "Configuration",
 <h2 id="cifs">File share delivery</h2>
 """ + code([("", "[delivery]"), ("", "methods=cifs"), ("", ""), ("", "[cifs]"), ("", "share=\\\\fileserver\\reports")]) + """
 <p>The service runs as LocalSystem, so on a domain it connects as the computer account (<code>DOMAIN\\HOSTNAME$</code>). Give the computer accounts, or the Domain Computers group, write access to the share and folder. The report is written under a temporary name and renamed, so a reader never sees a partial file. File share and SCP deliveries do not use the certificate registration: the share permissions or the SSH key control access.</p>
+<p>Without a domain (a Samba server, a NAS or a workgroup), give the agent a share login. Set <code>user=</code> in <code>[cifs]</code> and save the password from an administrator command prompt. It asks for the password without showing it and stores it encrypted with Windows DPAPI in <code>C:\\ProgramData\\DataReel\\ReportingAgent\\cifs_password.dat</code>, which only SYSTEM and Administrators can read. Each cycle the agent connects to the share with that login, copies the report and disconnects, so it works with nobody signed in.</p>
+""" + code([("", "[cifs]"), ("", "share=\\\\192.168.122.1\\wra_reports"), ("", "user=wra"), ("", ""),
+            ("", '"C:\\Program Files\\DataReel\\ReportingAgent\\drra_svc.exe" set-cifs-password')]) + """
+<p>A share on the computer that runs the <a href="reports.html#drsm">DataReel System Monitor</a> puts every report where DRSM reads it.</p>
 
 <h2 id="scp">SCP delivery</h2>
 <p>Create a key with no passphrase for the agent, add the public key to the SSH account's <code>authorized_keys</code>, and limit the private key to SYSTEM and Administrators:</p>
@@ -497,7 +514,7 @@ page("reports.html", "Reports and status page",
             ("", "NETWORK:"), ("", 'adapter="Ethernet" if_index=10 speed_mbps=1000 rx_bytes=91234664 tx_bytes=37097265 rx_errors=0 tx_errors=0 ...'), ("", "END NETWORK")]) + """
 
 <h2 id="status">Fleet status page</h2>
-<p><code>status.php</code> in the upload pages folder lists every computer with its state, worst first. See it on the <a href="""" + DEMO + """">live demo</a>.</p>
+<p><code>status.php</code> in the upload pages folder lists every computer with its state, worst first. See it on the <a href="https://datareel.com/windows_reporting_agent/demo/">live demo</a>.</p>
 """ + table(["State", "When"], [
     ['<span class="badge">Needs attention</span>', "No report for <code>missing_days</code>, an empty or bad report, or a Windows Defender detection, failed action or disabled protection"],
     ['<span class="badge">Warning</span>', "A late report, Windows updates older than <code>patch_max_age_days</code>, a missing required program or an unwanted program"],
@@ -510,7 +527,7 @@ page("reports.html", "Reports and status page",
             ("", 'unwanted_apps = "uTorrent*, CCleaner*"')]) + """
 
 <h2 id="demo">Live demo and sample fleet</h2>
-<p><code>tools/gen_sample_fleet.py</code> writes reports for a made up fleet that covers every state: current, late and missing check-ins, empty and bad reports, computers behind on updates, missing and unwanted programs and Defender detections. <code>php/install_demo.sh</code> installs the status pages in a folder of their own with such a fleet and no login, which is how the <a href="""" + DEMO + """">live demo</a> runs:</p>
+<p><code>tools/gen_sample_fleet.py</code> writes reports for a made up fleet that covers every state: current, late and missing check-ins, empty and bad reports, computers behind on updates, missing and unwanted programs and Defender detections. <code>php/install_demo.sh</code> installs the status pages in a folder of their own with such a fleet and no login, which is how the <a href="https://datareel.com/windows_reporting_agent/demo/">live demo</a> runs:</p>
 """ + code([("$", "php/install_demo.sh --apply /var/www/html/windows_reporting_agent/demo")]) + """
 
 <h2 id="script">Status page script</h2>
@@ -519,7 +536,24 @@ page("reports.html", "Reports and status page",
             ("", "*/30 * * * * $HOME/windows_reporting_agent/bash/run_windows_laptop_inventory.sh > /dev/null 2>&1")]) + """
 
 <h2 id="drsm">DRSM</h2>
-<p>The <a href="https://datareel.com/info_drsm.php">DataReel System Monitor</a> is getting a Windows plugin that reads these reports, so Windows computers show up on the DRSM dashboard next to the Linux hosts. See the DRSM documentation when it is released.</p>
+<p>The <a href="https://datareel.com/info_drsm.php">DataReel System Monitor</a> shows Windows computers on its dashboard next to the Linux hosts. DRSM never connects to a Windows computer: its <code>wra</code> collector runs the Windows plugins on the monitor host against each computer's last report in <code>WRA_REPORTS_DIR</code>. The simplest way to get the reports there is the agent's <a href="configuration.html#cifs">file share delivery</a> to a share on the monitor host. Reports that arrive by HTTPS on another server have to be copied over.</p>
+""" + table(["DRSM plugin", "Checks"], [
+    ["<code>windows/checkin</code>", "The computer reported recently and completely, agent version"],
+    ["<code>windows/defender</code>", "Defender threats, protection turned off, old definitions"],
+    ["<code>windows/patches</code>", "Age of the newest Windows patch"],
+    ["<code>windows/apps</code>", "Required and forbidden programs"],
+    ["<code>windows/resources</code>", "CPU, memory, disk and network from the <a href=\"#usage\">usage sections</a>, for the trends page"],
+]) + """
+""" + code([("c", "# DRSM etc/hosts/_defaults.conf"),
+            ("", "WRA_REPORTS_DIR=/path/to/reports"),
+            ("", ""),
+            ("c", "# DRSM etc/hosts/pc-0142.conf"),
+            ("", "HOST=pc-0142"),
+            ("", "PLATFORM=windows"),
+            ("", "COLLECTOR=wra"),
+            ("", 'PROBES=""'),
+            ("", 'PLUGINS="windows/checkin windows/defender windows/patches windows/apps windows/resources"')]) + """
+<p>See the DRSM documentation for the plugin settings. <code>windows/resources</code> needs the DRSM release after 1.31.</p>
 """)
 
 # ---------------------------------------------------------------- security
@@ -548,13 +582,14 @@ page("security.html", "Security",
   <li>The service runs as LocalSystem. The private key never leaves the key store.</li>
   <li>The installer limits <code>C:\\ProgramData\\DataReel\\ReportingAgent</code> (report, log, certificate, registration state) to SYSTEM and Administrators, so standard users cannot read the inventory or tamper with the agent state.</li>
   <li>The settings file is in <code>C:\\Program Files\\DataReel\\ReportingAgent</code>, which only administrators can change.</li>
+  <li>A file share password is stored encrypted with DPAPI for the computer in <code>cifs_password.dat</code> in the same protected folder, never in the settings file.</li>
 </ul>
 
 <h2 id="server">On the server</h2>
 <ul>
   <li><code>server.ini</code>, the registrations and the reports live in <code>DATA_DIR</code>, outside the web root or behind <code>Require all denied</code>.</li>
   <li>Hostnames are checked against <code>^[a-z0-9][a-z0-9_-]{0,62}$</code> before they are used in a file name.</li>
-  <li><code>admin.php</code> needs web server authentication and a per-session CSRF token for every change, and escapes all output.</li>
+  <li><code>admin.php</code> needs a login (web server authentication, or the DRSM dashboard login with <code>login = drsm</code>) and a per-session CSRF token for every change, and escapes all output. <code>status.php</code> and <code>report.php</code> need the same login.</li>
   <li>Files are written to a temporary name and renamed into place.</li>
 </ul>
 
@@ -629,7 +664,11 @@ page("troubleshooting.html", "Troubleshooting",
     ["error code 12057", "The certificate revocation check failed: keep <code>ignore_cert_revocation=1</code>"],
     ["error code 12175 or 12045", "Windows does not trust the server's TLS certificate"],
     ["<code>Unexpected answer from ... (HTTP 404)</code>", "<code>upload_path</code> or <code>register_path</code> is wrong"],
-    ["<code>Could not copy report to \\\\...</code>", "The computer account cannot write to the share"],
+    ["<code>Could not copy report to \\\\...</code>", "The computer account, or the <code>[cifs] user</code>, cannot write to the share: share permissions, folder permissions, or SELinux on a Samba server"],
+    ["<code>No share password, run: ... set-cifs-password</code>", "<code>[cifs] user=</code> is set but its password was never saved"],
+    ["<code>Could not connect to \\\\... as ...</code>, error code 1326", "Wrong share user name or password: run <code>set-cifs-password</code> again"],
+    ["error code 53 (network path not found)", "The computer cannot reach the file server on port 445"],
+    ["error code 1219 (multiple connections)", "Another login to the same server with other credentials is open, for example a mapped drive in a desktop session"],
     ["<code>scp ... failed: Host key verification failed</code>", "Add the server to <code>known_hosts_file</code>, or use <code>accept-new</code> once"],
 ]) + """
 
@@ -643,36 +682,26 @@ page("troubleshooting.html", "Troubleshooting",
 
 # ---------------------------------------------------------------- changelog
 page("changelog.html", "What's new",
-     "DataReel Reporting Agent release history.",
-     [("v33", "Release 3.3"), ("v32", "Release 3.2")],
+     "DataReel Reporting Agent for Windows release history.",
+     [("v33", "Release 3.3")],
      """
 <h1>What's new</h1>
-<p class="lead">Release history of the DataReel Reporting Agent for Windows.</p>
+<p class="lead">Release 3.3 is the first public release of the DataReel Reporting Agent for Windows.</p>
 
 <h2 id="v33">Release 3.3 <span class="badge new">October 2026</span></h2>
-<ul>
-  <li><strong>New name:</strong> DataReel Reporting Agent for Windows. Releases up to 3.2 were called Windows Reporting Agent, with a service and folders named <code>WindowsReportAgent</code>, which could be mistaken for part of Windows. The service is now <code>DataReelReportAgent</code>, the programs are in <code>C:\\Program Files\\DataReel\\ReportingAgent</code>, the agent data in <code>C:\\ProgramData\\DataReel\\ReportingAgent</code>, and the files are <code>drra_svc.exe</code>, <code>drra.ini</code> and <code>drra.log</code>.</li>
-  <li><strong>Upgrades from 3.2:</strong> setup moves the settings, certificate, registration and share password to the new names and removes the old service and folders. The agent keeps its machine key, so it stays approved.</li>
-  <li><strong>File share login:</strong> CIFS delivery to shares outside a Windows domain, with the password encrypted (DPAPI) in the agent data folder. Set it with <code>drra_svc.exe set-cifs-password</code> or the setup switches <code>/CIFSUSER=</code> and <code>/CIFSPASS=</code>.</li>
-  <li><strong>Dashboard login:</strong> the admin and status pages can use the DataReel System Monitor dashboard login (<code>login = drsm</code>).</li>
-  <li><strong>Usage for trends:</strong> new PERFORMANCE (CPU, memory, commit charge, uptime), DISK USAGE (each fixed drive) and NETWORK (adapter counters) sections, as <code>name=value</code> lines for DRSM trend graphs, shown on the report page.</li>
-  <li><strong>Every 15 minutes:</strong> the default report interval is 15 minutes (it was 45), set with <code>report_interval_minutes</code> or setup <code>/INTERVAL=</code>.</li>
-  <li><strong>Fixes:</strong> the agent registers again when it is pointed at a different server, and a new <code>/SERVER=</code> in setup turns HTTPS on.</li>
-</ul>
-
-<h2 id="v32">Release 3.2</h2>
-<p>Release 3.2, the first open source release (named Windows Reporting Agent), turns an in-house tool, written for a deployment of 120 laptops, into a package anyone can install.</p>
+<p>Release 3.3 turns an in-house tool, written for a deployment of 120 laptops, into a package anyone can install.</p>
 <ul>
   <li><strong>Signed uploads:</strong> each computer registers a certificate for a non-exportable machine key before it sends anything, and every report is signed. The server checks the signature, the approval state, the time and a one time nonce.</li>
-  <li><strong>Admin page:</strong> approve, revoke and delete computers and reports, with a login and CSRF protection. It replaces the old remove page, which had no login.</li>
+  <li><strong>Admin page:</strong> approve, revoke and delete computers and reports, with a login and CSRF protection. It can use the DataReel System Monitor dashboard login (<code>login = drsm</code>).</li>
   <li><strong>Enrollment token:</strong> optional automatic approval for large rollouts.</li>
   <li><strong>Settings file:</strong> every setting is in <code>drra.ini</code> instead of the program code. The service reads it before each report.</li>
-  <li><strong>More delivery methods:</strong> a Windows file share (CIFS) and SCP, alone or next to HTTPS.</li>
   <li><strong>Installer:</strong> a 64-bit setup.exe with server settings pages and command line switches for silent installs, upgrades that keep the settings, a restart-on-failure service, and an agent data folder limited to SYSTEM and Administrators.</li>
-  <li><strong>Fleet status pages:</strong> <code>status.php</code> and <code>report.php</code> check every computer's last report for late check-ins, old Windows updates, Defender problems, and required and unwanted programs, with a <a href="""" + DEMO + """">live demo</a> on a sample fleet.</li>
+  <li><strong>Fleet status pages:</strong> <code>status.php</code> and <code>report.php</code> check every computer's last report for late check-ins, old Windows updates, Defender problems, and required and unwanted programs, with a <a href="https://datareel.com/windows_reporting_agent/demo/">live demo</a> on a sample fleet.</li>
   <li><strong>Server install script:</strong> <code>install_server.sh</code> sets up the PHP pages, <code>.htaccess</code>, admin login and data folder, with a dry run first.</li>
-  <li><strong>Fixes:</strong> the Defender alert query now only returns the last 30 days (critical and error events from all time were included before); HTTP errors from the server are reported instead of counted as success; WinINet errors show their message.</li>
-  <li><strong>Defaults:</strong> the report and log moved from <code>C:\\</code> to <code>C:\\ProgramData\\DataReel\\ReportingAgent</code>.</li>
+  <li><strong>Delivery methods:</strong> signed HTTPS uploads, a Windows file share (CIFS) with a share login for sites without a domain (password encrypted with DPAPI), and SCP, alone or together.</li>
+  <li><strong>Usage for trends:</strong> PERFORMANCE (CPU, memory, commit charge, uptime), DISK USAGE (each fixed drive) and NETWORK (adapter counters) sections as <code>name=value</code> lines for DRSM trend graphs, shown on the report page.</li>
+  <li><strong>Every 15 minutes:</strong> reports every 15 minutes by default, set with <code>report_interval_minutes</code> or setup <code>/INTERVAL=</code>.</li>
+  <li><strong>DataReel names:</strong> service <code>DataReelReportAgent</code>, programs in <code>C:\\Program Files\\DataReel\\ReportingAgent</code>, data in <code>C:\\ProgramData\\DataReel\\ReportingAgent</code>, so nothing installed looks like part of Windows. Setup moves earlier test builds (named Windows Reporting Agent) over.</li>
 </ul>
 """)
 print("wrote", len(ORDER), "pages to", OUT)

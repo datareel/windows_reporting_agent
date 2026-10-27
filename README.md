@@ -29,7 +29,7 @@ a browser. It is also at <https://datareel.com/windows_reporting_agent/>.
 - [Agent settings](#agent-settings)
 - [Server settings](#server-settings)
 - [Security](#security)
-- [The fleet status page](#the-fleet-status-page)
+- [The fleet status page](#the-fleet-status-page) (and DRSM)
 - [Building from source](#building-from-source)
 - [Command line tools](#command-line-tools)
 - [Troubleshooting](#troubleshooting)
@@ -223,11 +223,11 @@ install, so running a new version with only `/VERYSILENT` upgrades in place.
 Run the new setup over the old one. It stops the service, replaces the
 programs, keeps `drra.ini` and starts the service again.
 
-Releases up to 3.2 were called "Windows Reporting Agent" (service
+Earlier test builds were called "Windows Reporting Agent" (service
 `WindowsReportAgent`, `C:\Program Files\WindowsReportAgent`,
-`C:\ProgramData\WindowsReportAgent`). Release 3.3 renamed everything to
-DataReel names so the agent is never mistaken for part of Windows. Its
-setup moves such an install over by itself: the settings (with their
+`C:\ProgramData\WindowsReportAgent`). Release 3.3 uses DataReel names so
+the agent is never mistaken for part of Windows, and its setup moves such
+an install over by itself: the settings (with their
 paths updated), the agent certificate, registration state and share
 password move to the new folders, the old service, uninstall entry and
 folders are removed, and the agent keeps its machine key, so it does not
@@ -420,6 +420,35 @@ It is a dry run unless you add `--apply`:
 $ php/install_demo.sh --apply /var/www/html/windows_reporting_agent/demo
 ```
 
+### DataReel System Monitor (DRSM)
+
+DRSM shows Windows computers on its dashboard next to the Linux hosts.
+It never connects to a Windows computer: its `wra` collector runs the
+`windows/*` plugins on the monitor host against each computer's last
+report in `WRA_REPORTS_DIR`. The simplest way to get the reports there is
+the CIFS delivery to a share on the monitor host; reports that arrive by
+HTTPS on another server have to be copied over.
+
+| DRSM plugin | Checks |
+| --- | --- |
+| `windows/checkin` | The computer reported recently and completely, agent version |
+| `windows/defender` | Defender threats, protection turned off, old definitions |
+| `windows/patches` | Age of the newest Windows patch |
+| `windows/apps` | Required and forbidden programs |
+| `windows/resources` | CPU, memory, disk and network from the usage sections, for the trends page (DRSM release after 1.31) |
+
+```
+# DRSM etc/hosts/_defaults.conf
+WRA_REPORTS_DIR=/path/to/reports
+
+# DRSM etc/hosts/pc-0142.conf
+HOST=pc-0142
+PLATFORM=windows
+COLLECTOR=wra
+PROBES=""
+PLUGINS="windows/checkin windows/defender windows/patches windows/apps windows/resources"
+```
+
 ### Status page script
 
 `bash/run_windows_laptop_inventory.sh` is the original status page:
@@ -472,6 +501,7 @@ will report.
 | `get_ip_address.exe` | IP addresses |
 | `get_service_tag.exe` | Service tag and asset tag |
 | `svccontrol.exe`, `svcconfig.exe` | Start, stop, query and configure the service |
+| `drra_svc.exe set-cifs-password` | Save the `[cifs] user` share password, encrypted |
 
 ## Troubleshooting
 
@@ -488,6 +518,11 @@ first. It has the result of the last report for each delivery method.
 | `error code 12029` | The server cannot be reached on that port |
 | `error code 12057` | Certificate revocation check failed: leave `ignore_cert_revocation=1` |
 | `error code 12175` or `12045` | The server's TLS certificate is not trusted by Windows |
+| `No share password, run: ... set-cifs-password` | `[cifs] user=` is set but its password was never saved |
+| `Could not connect to \\... as ...` with `error code 1326` | Wrong share user name or password: run `set-cifs-password` again |
+| `error code 53` (network path not found) | The computer cannot reach the file server on port 445 |
+| `error code 1219` (multiple connections) | Another login to the same server with other credentials is open, for example a mapped drive in a desktop session |
+| `Could not copy report to \\...` | The login works but the write fails: share or folder permissions, or SELinux on a Samba server |
 
 Run `send_test_report.exe` from an administrator command prompt to see
 the result right away instead of waiting for the next cycle.

@@ -47,13 +47,14 @@
   <li>The service runs as LocalSystem. The private key never leaves the key store.</li>
   <li>The installer limits <code>C:\ProgramData\DataReel\ReportingAgent</code> (report, log, certificate, registration state) to SYSTEM and Administrators, so standard users cannot read the inventory or tamper with the agent state.</li>
   <li>The settings file is in <code>C:\Program Files\DataReel\ReportingAgent</code>, which only administrators can change.</li>
+  <li>A file share password is stored encrypted with DPAPI for the computer in <code>cifs_password.dat</code> in the same protected folder, never in the settings file.</li>
 </ul>
 
 <h2 id="server">On the server</h2>
 <ul>
   <li><code>server.ini</code>, the registrations and the reports live in <code>DATA_DIR</code>, outside the web root or behind <code>Require all denied</code>.</li>
   <li>Hostnames are checked against <code>^[a-z0-9][a-z0-9_-]{0,62}$</code> before they are used in a file name.</li>
-  <li><code>admin.php</code> needs web server authentication and a per-session CSRF token for every change, and escapes all output.</li>
+  <li><code>admin.php</code> needs a login (web server authentication, or the DRSM dashboard login with <code>login = drsm</code>) and a per-session CSRF token for every change, and escapes all output. <code>status.php</code> and <code>report.php</code> need the same login.</li>
   <li>Files are written to a temporary name and renamed into place.</li>
 </ul>
 

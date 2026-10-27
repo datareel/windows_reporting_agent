@@ -73,7 +73,7 @@ adapter="Ethernet" if_index=10 speed_mbps=1000 rx_bytes=91234664 tx_bytes=370972
 END NETWORK</code></pre>
 
 <h2 id="status">Fleet status page</h2>
-<p><code>status.php</code> in the upload pages folder lists every computer with its state, worst first. See it on the <a href= + DEMO + >live demo</a>.</p>
+<p><code>status.php</code> in the upload pages folder lists every computer with its state, worst first. See it on the <a href="https://datareel.com/windows_reporting_agent/demo/">live demo</a>.</p>
 <div class="table-wrap"><table><thead><tr><th>State</th><th>When</th></tr></thead><tbody><tr><td><span class="badge">Needs attention</span></td><td>No report for <code>missing_days</code>, an empty or bad report, or a Windows Defender detection, failed action or disabled protection</td></tr><tr><td><span class="badge">Warning</span></td><td>A late report, Windows updates older than <code>patch_max_age_days</code>, a missing required program or an unwanted program</td></tr><tr><td><span class="badge">OK</span></td><td>None of the above</td></tr></tbody></table></div>
 <p>The tiles at the top filter the list, the column headers sort it, and the search box matches computer names, users, service tags, IP addresses and problems. <code>report.php?host=&lt;name&gt;</code> shows one computer: its problems, hardware, users, Defender events, installed programs with a filter, Windows updates, hotfixes and the report file. Both pages are read only and need the admin login. Set the rules in <code>server.ini</code>:</p>
 <pre><code>[status]
@@ -82,7 +82,7 @@ required_apps_skip_hosts = "srv-*"
 unwanted_apps = "uTorrent*, CCleaner*"</code></pre>
 
 <h2 id="demo">Live demo and sample fleet</h2>
-<p><code>tools/gen_sample_fleet.py</code> writes reports for a made up fleet that covers every state: current, late and missing check-ins, empty and bad reports, computers behind on updates, missing and unwanted programs and Defender detections. <code>php/install_demo.sh</code> installs the status pages in a folder of their own with such a fleet and no login, which is how the <a href= + DEMO + >live demo</a> runs:</p>
+<p><code>tools/gen_sample_fleet.py</code> writes reports for a made up fleet that covers every state: current, late and missing check-ins, empty and bad reports, computers behind on updates, missing and unwanted programs and Defender detections. <code>php/install_demo.sh</code> installs the status pages in a folder of their own with such a fleet and no login, which is how the <a href="https://datareel.com/windows_reporting_agent/demo/">live demo</a> runs:</p>
 <pre><code><span class="p">$ </span>php/install_demo.sh --apply /var/www/html/windows_reporting_agent/demo</code></pre>
 
 <h2 id="script">Status page script</h2>
@@ -91,7 +91,18 @@ unwanted_apps = "uTorrent*, CCleaner*"</code></pre>
 */30 * * * * $HOME/windows_reporting_agent/bash/run_windows_laptop_inventory.sh &gt; /dev/null 2&gt;&amp;1</code></pre>
 
 <h2 id="drsm">DRSM</h2>
-<p>The <a href="https://datareel.com/info_drsm.php">DataReel System Monitor</a> is getting a Windows plugin that reads these reports, so Windows computers show up on the DRSM dashboard next to the Linux hosts. See the DRSM documentation when it is released.</p>
+<p>The <a href="https://datareel.com/info_drsm.php">DataReel System Monitor</a> shows Windows computers on its dashboard next to the Linux hosts. DRSM never connects to a Windows computer: its <code>wra</code> collector runs the Windows plugins on the monitor host against each computer's last report in <code>WRA_REPORTS_DIR</code>. The simplest way to get the reports there is the agent's <a href="configuration.html#cifs">file share delivery</a> to a share on the monitor host. Reports that arrive by HTTPS on another server have to be copied over.</p>
+<div class="table-wrap"><table><thead><tr><th>DRSM plugin</th><th>Checks</th></tr></thead><tbody><tr><td><code>windows/checkin</code></td><td>The computer reported recently and completely, agent version</td></tr><tr><td><code>windows/defender</code></td><td>Defender threats, protection turned off, old definitions</td></tr><tr><td><code>windows/patches</code></td><td>Age of the newest Windows patch</td></tr><tr><td><code>windows/apps</code></td><td>Required and forbidden programs</td></tr><tr><td><code>windows/resources</code></td><td>CPU, memory, disk and network from the <a href="#usage">usage sections</a>, for the trends page</td></tr></tbody></table></div>
+<pre><code><span class="c"># DRSM etc/hosts/_defaults.conf</span>
+WRA_REPORTS_DIR=/path/to/reports
+
+<span class="c"># DRSM etc/hosts/pc-0142.conf</span>
+HOST=pc-0142
+PLATFORM=windows
+COLLECTOR=wra
+PROBES=""
+PLUGINS="windows/checkin windows/defender windows/patches windows/apps windows/resources"</code></pre>
+<p>See the DRSM documentation for the plugin settings. <code>windows/resources</code> needs the DRSM release after 1.31.</p>
 <nav class="pager" aria-label="Previous and next page"><a class="card prev" href="configuration.html"><small>Previous</small>Configuration</a><a class="card next" href="security.html"><small>Next</small>Security</a></nav>
   </main>
 </div>

@@ -30,7 +30,7 @@
 <p class="lead">A computer only sends reports after the server approves its certificate. Approve it on the admin page, or automatically with an <a href="server.html#token">enrollment token</a>.</p>
 
 <h2 id="page">The admin page</h2>
-<p>Open <code>admin.php</code> in the upload pages folder, for example <code>https://reports.example.com/windows_reporting_agent/upload/admin.php</code>, and log in. It lists every registered computer with its status, key fingerprint, registration and approval times, last report and last address, and the reports on disk that have no registration.</p>
+<p>Open <code>admin.php</code> in the upload pages folder, for example <code>https://reports.example.com/windows_reporting_agent/upload/admin.php</code>, and log in, with the web server login or, with <code>login = drsm</code>, the <a href="server.html#drsm">DRSM dashboard login</a>. It lists every registered computer with its status, key fingerprint, registration and approval times, last report and last address, and the reports on disk that have no registration.</p>
 
 <h2 id="states">States</h2>
 <div class="table-wrap"><table><thead><tr><th>Status</th><th>Meaning</th></tr></thead><tbody><tr><td><code>pending</code></td><td>Registered, waiting for an admin. Its reports are refused.</td></tr><tr><td><code>approved</code></td><td>Reports signed with its key are accepted.</td></tr><tr><td><code>revoked</code></td><td>Its reports are refused. It stays listed until deleted.</td></tr></tbody></table></div>

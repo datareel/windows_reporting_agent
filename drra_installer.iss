@@ -26,7 +26,7 @@
 ; the minutes between reports (default 15). Settings not
 ; given keep the value from an existing install, or the default.
 ;
-; Releases up to 3.2 were named "Windows Reporting Agent" (service
+; Test builds before 3.3 were named "Windows Reporting Agent" (service
 ; WindowsReportAgent, C:\Program Files\WindowsReportAgent). This setup
 ; moves such an install over: settings, agent data, encrypted share
 ; password and machine key are kept, the old service and folders are
@@ -36,7 +36,7 @@
 #define SvcName "DataReelReportAgent"
 #define AppTitle "DataReel Reporting Agent"
 #define DataDir "{commonappdata}\DataReel\ReportingAgent"
-; Names used up to release 3.2
+; Names used by the test builds before 3.3
 #define OldSvcName "WindowsReportAgent"
 #define OldAppId "{7AC8D5E4-C9B2-4216-B192-7844742EC7CC}"
 
@@ -113,7 +113,7 @@ begin
   Result := AddBackslash(Dir) + 'drra.ini';
 end;
 
-// ------------------------------------------------- release 3.2 and older
+// ------------------------------------- test builds before 3.3 (old names)
 
 const
   MOVEFILE_DELAY_UNTIL_REBOOT = 4;
@@ -164,7 +164,7 @@ begin
   StringChangeEx(S, OldDataDir + '\windows_report_agent.log', ExpandConstant('{#DataDir}') + '\drra.log', True);
   StringChangeEx(S, OldDataDir, ExpandConstant('{#DataDir}'), True);
   StringChangeEx(S, '; Windows Reporting Agent settings', '; DataReel Reporting Agent for Windows: settings', True);
-  // 45 minutes was the 3.2 default, 3.3 reports every 15
+  // 45 minutes was the test builds' default, 3.3 reports every 15
   StringChangeEx(S, 'report_interval_minutes=45', 'report_interval_minutes=15', True);
   if SaveStringToFile(Dest, AnsiString(S), False) then
     Log('Moved settings ' + Src + ' to ' + Dest)
@@ -172,7 +172,7 @@ begin
     Log('Could not write ' + Dest);
 end;
 
-// Move a 3.2 or older install: settings, agent data, then remove the old
+// Move a test build install: settings, agent data, then remove the old
 // service, uninstall entry and folders. The machine key keeps its old
 // name; the agent finds it.
 procedure MigrateOldInstall;
@@ -183,7 +183,7 @@ var
 begin
   if not OldServiceExists and not DirExists(OldAppDir) and not DirExists(OldDataDir) then
     exit;
-  Log('Found a Windows Reporting Agent 3.2 or older install, moving it');
+  Log('Found a Windows Reporting Agent test build install, moving it');
   AppDir := ExpandConstant('{app}');
   NewData := ExpandConstant('{#DataDir}');
 

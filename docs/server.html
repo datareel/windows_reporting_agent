@@ -23,7 +23,7 @@
 </header>
 <div class="layout">
   <nav class="sidebar" aria-label="Documentation">
-    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html" class="active" aria-current="page">Set up the report server</a><div class="toc"><a href="#requirements">Requirements</a><a href="#install">Install the pages</a><a href="#permissions">Permissions</a><a href="#apache">Apache</a><a href="#token">Enrollment token</a><a href="#shared">Shared hosting</a><a href="#https">HTTPS</a></div><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/windows_reporting_agent/demo/">Live demo</a><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html" class="active" aria-current="page">Set up the report server</a><div class="toc"><a href="#requirements">Requirements</a><a href="#install">Install the pages</a><a href="#permissions">Permissions</a><a href="#apache">Apache</a><a href="#drsm">DRSM dashboard login</a><a href="#token">Enrollment token</a><a href="#shared">Shared hosting</a><a href="#https">HTTPS</a></div><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/windows_reporting_agent/demo/">Live demo</a><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
   </nav>
   <main class="content" id="main">
 <h1>Set up the report server</h1>
@@ -66,6 +66,12 @@
 &lt;/FilesMatch&gt;</code></pre>
 <p>If you do not allow <code>.htaccess</code> files, put the same lines in a <code>&lt;Directory&gt;</code> block in the Apache configuration. <code>admin.php</code>, <code>status.php</code> and <code>report.php</code> refuse to run if the web server has not logged the user in, unless you set <code>require_remote_user = 0</code> in <code>server.ini</code>. Add or change admin logins with:</p>
 <pre><code><span class="p">$ </span>htpasswd -B /var/lib/windows_reporting_agent/admin.htpasswd admin</code></pre>
+
+<h2 id="drsm">DRSM dashboard login</h2>
+<p>If the pages sit under a <a href="https://datareel.com/info_drsm.php">DataReel System Monitor</a> dashboard, for example in <code>/dashboard/windows</code>, they can use the dashboard login instead of a separate one. Install them with <code>--drsm-login</code> and the dashboard's config file:</p>
+<pre><code><span class="p">$ </span>./install_server.sh --apply --drsm-login ../../config/drsm.php \
+      /var/www/html/dashboard/windows /var/www/html/dashboard/windows/data</code></pre>
+<p>This sets <code>login = drsm</code> and <code>drsm_config</code> in <code>server.ini</code> and leaves the Basic login out of <code>.htaccess</code>. People signed in to the dashboard open <code>admin.php</code>, <code>status.php</code> and <code>report.php</code> directly; anyone else goes to the dashboard login and back. Admin actions record the dashboard user name. Internal networks and a dashboard with its login turned off behave as they do on the dashboard. <code>register.php</code> and <code>upload.php</code> stay open to the agents.</p>
 
 <h2 id="token">Enrollment token</h2>
 <p>Without a token, every new computer waits on the <a href="approve.html">admin page</a> until you approve it. To approve computers automatically, set a long random token in <code>DATA_DIR/server.ini</code> and give the same token to the setup:</p>
