@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#define AGENT_VERSION "3.3-beta2"
+#define AGENT_VERSION "3.4"
 #define AGENT_INI_FILE "drra.ini"
 
 // Agent settings, loaded from AGENT_INI_FILE in the same directory as the

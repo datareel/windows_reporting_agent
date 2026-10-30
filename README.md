@@ -117,7 +117,7 @@ The agent can also, or instead, copy the report to a Windows file share
 
 ## Requirements
 
-**Agent:** Windows 10 or 11, or Windows Server 2016 or later, 64-bit.
+**Agent:** Windows 11, Windows Server 2022 or Windows Server 2025, 64-bit.
 The SCP option needs the Windows OpenSSH client (installed by default on
 Windows 10 1809 and later).
 
@@ -209,7 +209,7 @@ For Group Policy, PDQ Deploy, a login script or any other software
 deployment tool, pass the settings on the command line:
 
 ```
-drra_setup_3.3-beta2.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
+drra_setup_3.4.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
     /SERVER=reports.example.com /PORT=443 /URLPATH=/windows_reporting_agent/upload ^
     /TOKEN=<enrollment token>
 ```

@@ -68,6 +68,17 @@ ISCC = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 installer: all
 	$(ISCC) /Qp drra_installer.iss
 
+# The programs, message DLL, default settings and docs in a zip file, for
+# installs without setup.exe (see build.txt). Keep VERSION in step with
+# AGENT_VERSION in common.h and AppVersion in drra_installer.iss.
+VERSION = 3.4
+BINZIP  = output\drra_$(VERSION)_bin_x64.zip
+
+binzip: all
+	-mkdir output 2>nul
+	-del /q $(BINZIP) 2>nul
+	tar -a -c -f $(BINZIP) $(PROGS) drra_messages.dll drra.ini README.md LICENSE
+
 clean:
 	-del /q *.exe *.obj *.bin 2>nul
 	-del /q drra_messages.dll drra_messages.res drra_messages.rc 2>nul

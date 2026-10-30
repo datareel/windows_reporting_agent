@@ -97,7 +97,7 @@ def page(fname, title, desc, toc, body):
 <nav class="pager" aria-label="Previous and next page">%(pager)s</nav>
   </main>
 </div>
-<footer class="foot">DataReel Reporting Agent for Windows 3.3 beta 1 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+<footer class="foot">DataReel Reporting Agent for Windows 3.4 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
 </body>
 </html>
 """ % dict(full_title=full_title, desc=desc, menu=ICON_MENU, demo=demo_btn, dl=DL, dlicon=ICON_DL,
@@ -221,14 +221,14 @@ page("install.html", "Install the agent",
 
 <h2 id="requirements">Requirements</h2>
 """ + table(["Item", "Needs"], [
-    ["Windows", "Windows 10 or 11, or Windows Server 2016 or later, 64-bit"],
+    ["Windows", "Windows 11, Windows Server 2022 or Windows Server 2025, 64-bit"],
     ["Rights", "An administrator account to install. The service runs as LocalSystem."],
     ["Network", "HTTPS access to the report server, or a file share or SSH server for the other delivery methods"],
     ["SCP delivery", "The Windows OpenSSH client, installed by default on Windows 10 1809 and later"],
 ]) + """
 
 <h2 id="setup">Run the setup</h2>
-<p>Download <code>drra_setup_3.3-beta2.exe</code> from the <a href=\"""" + DL + """">downloads page</a> and run it as an administrator. After the license and install folder pages it asks for the report server:</p>
+<p>Download <code>drra_setup_3.4.exe</code> from the <a href=\"""" + DL + """">downloads page</a> and run it as an administrator. After the license and install folder pages it asks for the report server:</p>
 """ + table(["Field", "Example", "Notes"], [
     ["Server host name", "<code>reports.example.com</code>", "The web server that runs the PHP pages"],
     ["Port", "<code>443</code>", "443 for HTTPS"],
@@ -240,7 +240,7 @@ page("install.html", "Install the agent",
 
 <h2 id="silent">Unattended installs</h2>
 <p>For Group Policy, PDQ Deploy, a login script or any other deployment tool, pass the settings on the command line:</p>
-""" + code([("", "drra_setup_3.3-beta2.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^"),
+""" + code([("", "drra_setup_3.4.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^"),
             ("", "    /SERVER=reports.example.com /PORT=443 /URLPATH=/windows_reporting_agent/upload ^"),
             ("", "    /TOKEN=<enrollment token>")]) + """
 """ + table(["Switch", "Meaning"], [
@@ -485,7 +485,7 @@ page("reports.html", "Reports and status page",
 <h2 id="format">Report format</h2>
 <p>Reports are saved as <code>&lt;hostname&gt;_windows_report_agent.txt</code> in <code>reports_dir</code>. The header lines are <code>KEY: value</code> pairs, and each section starts with its name and a colon and ends with <code>END</code> and the name:</p>
 """ + code([("", "DataReel Reporting Agent report from host pc-0142"),
-            ("", "VERSION: 3.3-beta2"),
+            ("", "VERSION: 3.4"),
             ("", "HOSTNAME: pc-0142"),
             ("", "ETIME: 1792971236"),
             ("", "DATETIME: Sun Oct 25 19:33:56 2026"),
@@ -637,7 +637,8 @@ page("building.html", "Build from source",
 <h2 id="build">Build</h2>
 <p>Open an <strong>x64 Native Tools Command Prompt for VS</strong> (or run <code>vcvars64.bat</code>) in the source folder:</p>
 """ + code([("", "nmake               rem programs and the event message DLL"),
-            ("", "nmake installer     rem output\\drra_setup_3.3-beta2.exe"),
+            ("", "nmake installer     rem output\\drra_setup_3.4.exe"),
+            ("", "nmake binzip        rem output\\drra_3.4_bin_x64.zip"),
             ("", "nmake clean")]) + """
 
 <h2 id="files">Source files</h2>
@@ -702,10 +703,16 @@ page("troubleshooting.html", "Troubleshooting",
 # ---------------------------------------------------------------- changelog
 page("changelog.html", "What's new",
      "DataReel Reporting Agent for Windows release history.",
-     [("v33b2", "Release 3.3 beta 2"), ("v33", "Release 3.3 beta 1")],
+     [("v34", "Release 3.4"), ("v33b2", "Release 3.3 beta 2"), ("v33", "Release 3.3 beta 1")],
      """
 <h1>What's new</h1>
-<p class="lead">Release 3.3 beta 2 (3.3-beta2) adds hook uploads. Release 3.3 beta 1 was the first public release of the DataReel Reporting Agent for Windows. Both are betas: test them on a few computers before a wide rollout.</p>
+<p class="lead">Release 3.4 is the first stable release of the DataReel Reporting Agent for Windows, for Windows 11, Windows Server 2022 and Windows Server 2025. It has everything from the 3.3 betas: release 3.3 beta 2 added hook uploads, and release 3.3 beta 1 was the first public release.</p>
+
+<h2 id="v34">Release 3.4 <span class="badge new">October 2026</span></h2>
+<ul>
+  <li><strong>Stable release</strong> of the 3.3 betas, for Windows 11, Windows Server 2022 and Windows Server 2025 (64-bit).</li>
+  <li><strong>Downloads:</strong> <code>drra_setup_3.4.exe</code>, and <code>drra_3.4_bin_x64.zip</code> with the programs, message DLL, default settings and docs for installs without setup (see <a href="building.html#dev">Development install</a>). <code>nmake binzip</code> builds the zip.</li>
+</ul>
 
 <h2 id="v33b2">Release 3.3 beta 2 <span class="badge new">October 2026</span></h2>
 <ul>
