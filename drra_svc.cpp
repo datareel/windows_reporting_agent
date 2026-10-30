@@ -39,6 +39,8 @@
 #pragma comment(lib, "user32.lib")
 
 #include "common.h"
+#include "agent_auth.h"
+#include "uploads.h"
 // Windows Update Agent (WUA) API
 #include <wuapi.h>
 #include <comutil.h>
@@ -59,6 +61,8 @@ int get_all_patches(std::string &output);
 
 VOID SvcInstall(void);
 int SetCifsPasswordCommand(const char *password);
+int UploadsCommand(int argc, TCHAR *argv[]);
+void AppendLog(const AgentConfig &cfg, const std::string &text);
 VOID WINAPI SvcCtrlHandler( DWORD ); 
 VOID WINAPI SvcMain( DWORD, LPTSTR * ); 
 VOID ReportSvcStatus( DWORD, DWORD, DWORD );
@@ -91,6 +95,13 @@ int __cdecl _tmain(int argc, TCHAR *argv[])
     {
       return SetCifsPasswordCommand(argc > 2 ? argv[2] : NULL);
     }
+
+  // Hook uploads: submit --hook <id> [--now] <file>, send-uploads, uploads
+  if( argc > 1 && (lstrcmpi( argv[1], TEXT("submit")) == 0 || lstrcmpi( argv[1], TEXT("send-uploads")) == 0 ||
+		   lstrcmpi( argv[1], TEXT("uploads")) == 0) )
+    {
+      return UploadsCommand(argc, argv);
+    }
   
   // TO_DO: Add any additional services for the process to this table.
   SERVICE_TABLE_ENTRY DispatchTable[] = 
@@ -107,6 +118,78 @@ int __cdecl _tmain(int argc, TCHAR *argv[])
       SvcReportEvent(TEXT("StartServiceCtrlDispatcher")); 
     } 
 } 
+
+//
+// Purpose:
+//   Hook upload commands, run by an administrator:
+//     submit --hook <id> [--now] <file>  queue a file for upload hook <id>
+//     send-uploads                       send the queued files now
+//     uploads                            list the upload hooks and their state
+//
+// Return value:
+//   0 on success
+//
+int UploadsCommand(int argc, TCHAR *argv[])
+{
+  AgentConfig cfg;
+  std::string output;
+  LoadAgentConfig(cfg, output);
+  output.clear();
+  int rv = 0;
+
+  if(lstrcmpi(argv[1], TEXT("submit")) == 0) {
+    std::string hook_id, file;
+    bool now = false;
+    for(int i = 2; i < argc; i++) {
+      std::string a = argv[i];
+      if(a == "--hook" && i + 1 < argc) hook_id = argv[++i];
+      else if(a.compare(0, 7, "--hook=") == 0) hook_id = a.substr(7);
+      else if(a == "--now") now = true;
+      else if(file.empty() && a.compare(0, 2, "--") != 0) file = a;
+      else {
+	fprintf(stderr, "Unknown option %s\n", a.c_str());
+	return 2;
+      }
+    }
+    if(hook_id.empty() || file.empty()) {
+      fprintf(stderr, "Usage: drra_svc.exe submit --hook <id> [--now] <file>\n");
+      return 2;
+    }
+    rv = SubmitUploadFile(cfg, hook_id, file, now, output) == 0 ? 0 : 1;
+    fputs(output.c_str(), rv == 0 ? stdout : stderr);
+  }
+  else if(lstrcmpi(argv[1], TEXT("send-uploads")) == 0) {
+    rv = SendPendingUploads(cfg, output) == 0 ? 0 : 1;
+    if(output.empty()) output = "No upload files waiting\n";
+    AppendLog(cfg, output);
+    fputs(output.c_str(), stdout);
+  }
+  else {
+    std::string section = UploadReportSection(cfg);
+    LoadUploadHooks(cfg, output);
+    fputs(output.c_str(), stderr);
+    if(section.empty()) printf("No upload hooks in %s\n", cfg.uploads_dir.c_str());
+    else fputs(section.c_str(), stdout);
+    printf("Hook upload page: %s\n", HookPagePath(cfg).c_str());
+  }
+  return rv;
+}
+
+//
+// Purpose:
+//   Adds text to the end of the log file (the service rewrites the log
+//   each report cycle)
+//
+void AppendLog(const AgentConfig &cfg, const std::string &text)
+{
+  if(text.empty()) return;
+  HANDLE hFile = CreateFile(cfg.log_file.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_ALWAYS,
+			    FILE_ATTRIBUTE_NORMAL, NULL);
+  if(hFile == INVALID_HANDLE_VALUE) return;
+  DWORD bytesWritten;
+  WriteFile(hFile, text.c_str(), (DWORD)text.length(), &bytesWritten, NULL);
+  CloseHandle(hFile);
+}
 
 //
 // Purpose:
@@ -317,6 +400,13 @@ VOID SvcInit( DWORD dwArgc, LPTSTR *lpszArgv)
       std::string report_output;
       upload_agent_report(cfg, report_output);
       output += report_output;
+
+      // Reports from other sources (hook uploads) go out after the agent's own report
+      std::string uploads_output;
+      if(SendPendingUploads(cfg, uploads_output) != 0) {
+	uploads_output += "ERROR - One or more upload files could not be sent\n";
+      }
+      output += uploads_output;
       std::string logfile_name = cfg.log_file;
       
       HANDLE hFile = CreateFile(
@@ -360,6 +450,12 @@ VOID SvcInit( DWORD dwArgc, LPTSTR *lpszArgv)
 	  ReportSvcStatus( SERVICE_STOPPED, NO_ERROR, 0 );
 	  break; 
         }
+	// "submit --now": send the queued upload files without a report
+	if(UploadSendNowRequested(cfg)) {
+	  std::string now_output;
+	  SendPendingUploads(cfg, now_output);
+	  AppendLog(cfg, now_output);
+	}
       }
     }
   
@@ -614,6 +710,9 @@ int upload_agent_report(const AgentConfig &cfg, std::string &output) {
   report_data += "END HOT FIXES\n";
 
   report_data += "\n";
+
+  // State of the hook uploads (reports from other sources)
+  report_data += UploadReportSection(cfg);
   
   DWORD bytesWritten;
   BOOL result = WriteFile(

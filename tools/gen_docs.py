@@ -228,7 +228,7 @@ page("install.html", "Install the agent",
 ]) + """
 
 <h2 id="setup">Run the setup</h2>
-<p>Download <code>drra_setup_3.3-beta1.exe</code> from the <a href=\"""" + DL + """">downloads page</a> and run it as an administrator. After the license and install folder pages it asks for the report server:</p>
+<p>Download <code>drra_setup_3.3-beta2.exe</code> from the <a href=\"""" + DL + """">downloads page</a> and run it as an administrator. After the license and install folder pages it asks for the report server:</p>
 """ + table(["Field", "Example", "Notes"], [
     ["Server host name", "<code>reports.example.com</code>", "The web server that runs the PHP pages"],
     ["Port", "<code>443</code>", "443 for HTTPS"],
@@ -240,7 +240,7 @@ page("install.html", "Install the agent",
 
 <h2 id="silent">Unattended installs</h2>
 <p>For Group Policy, PDQ Deploy, a login script or any other deployment tool, pass the settings on the command line:</p>
-""" + code([("", "drra_setup_3.3-beta1.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^"),
+""" + code([("", "drra_setup_3.3-beta2.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^"),
             ("", "    /SERVER=reports.example.com /PORT=443 /URLPATH=/windows_reporting_agent/upload ^"),
             ("", "    /TOKEN=<enrollment token>")]) + """
 """ + table(["Switch", "Meaning"], [
@@ -393,6 +393,7 @@ AGENT_ROWS = [
     ["https", "port", "443", "80 when <code>use_https=0</code>"],
     ["https", "upload_path", "/windows/upload/upload.php", "Web path of <code>upload.php</code>"],
     ["https", "register_path", "/windows/upload/register.php", "Web path of <code>register.php</code>"],
+    ["https", "hook_path", "", "Web path of <code>hook.php</code> for <a href=\"reports.html#uploads\">hook uploads</a>, empty = next to <code>upload_path</code>"],
     ["https", "use_https", "1", "0 for plain HTTP (test servers only)"],
     ["https", "ignore_cert_revocation", "1", "Skip the CRL/OCSP check, for networks that block CRL servers (WinINet error 12057)"],
     ["https", "enrollment_token", "", "Token from the server's <code>server.ini</code>"],
@@ -411,6 +412,10 @@ AGENT_ROWS = [
     ["agent", "users_dir", "C:\\Users", "Folder listed in the USERS section"],
     ["agent", "event_lookback_days", "30", "Days of Defender alerts to include"],
     ["agent", "data_dir", "C:\\ProgramData\\DataReel\\ReportingAgent", "Agent certificate and registration state"],
+    ["uploads", "enabled", "1", "<a href=\"reports.html#uploads\">Hook uploads</a> on (1) or off (0)"],
+    ["uploads", "dir", "C:\\ProgramData\\DataReel\\ReportingAgent\\uploads.d", "One <code>&lt;id&gt;.ini</code> per upload hook"],
+    ["uploads", "spool_dir", "C:\\ProgramData\\DataReel\\ReportingAgent\\uploads", "<code>&lt;spool_dir&gt;\\&lt;id&gt;</code> takes the files to send"],
+    ["uploads", "max_bytes", "20000000", "Largest file an upload hook may send"],
 ]
 SERVER_ROWS = [
     ["paths", "reports_dir", "/var/www/html/windows/reports", "Where accepted reports are saved"],
@@ -419,6 +424,10 @@ SERVER_ROWS = [
     ["registration", "auto_approve_with_token", "1", "1 approves an agent with the right token, 0 still needs an admin"],
     ["upload", "max_upload_bytes", "2000000", "Largest report accepted"],
     ["upload", "max_clock_skew_seconds", "300", "Largest clock difference allowed between agent and server"],
+    ["hooks", "enabled", "1", "1 lets <code>hook.php</code> take <a href=\"reports.html#uploads\">hook uploads</a>"],
+    ["hooks", "manifest_dir", "", "Hook manifests: the DRSM <code>plugins/uploads</code> folder. Only hook IDs with a manifest are taken; empty takes none."],
+    ["hooks", "dir", "", "Where uploads are kept, <code>&lt;dir&gt;/&lt;host&gt;/&lt;id&gt;/latest.*</code>; default <code>&lt;data_dir&gt;/hooks</code>"],
+    ["hooks", "max_bytes", "20000000", "Largest upload; a manifest's <code>MAX_BYTES</code> may set less"],
     ["admin", "require_remote_user", "1", "<code>admin.php</code>, <code>status.php</code> and <code>report.php</code> only run behind web server authentication"],
     ["admin", "login", "basic", "<code>basic</code> for the web server login, <code>drsm</code> for the DataReel System Monitor dashboard login"],
     ["admin", "drsm_config", "", "With <code>login = drsm</code>: the dashboard's <code>config/drsm.php</code>, absolute or relative to the pages folder"],
@@ -476,7 +485,7 @@ page("reports.html", "Reports and status page",
 <h2 id="format">Report format</h2>
 <p>Reports are saved as <code>&lt;hostname&gt;_windows_report_agent.txt</code> in <code>reports_dir</code>. The header lines are <code>KEY: value</code> pairs, and each section starts with its name and a colon and ends with <code>END</code> and the name:</p>
 """ + code([("", "DataReel Reporting Agent report from host pc-0142"),
-            ("", "VERSION: 3.3-beta1"),
+            ("", "VERSION: 3.3-beta2"),
             ("", "HOSTNAME: pc-0142"),
             ("", "ETIME: 1792971236"),
             ("", "DATETIME: Sun Oct 25 19:33:56 2026"),
@@ -505,6 +514,15 @@ page("reports.html", "Reports and status page",
     ["INSTALLED WINDOWS PATCHES", "Windows Update installation history"],
     ["HOT FIXES", "Installed hotfixes from WMI (<code>Win32_QuickFixEngineering</code>)"],
 ]) + """
+
+<h2 id="uploads">Hook uploads</h2>
+<p>A hook upload sends a report from another source with the agent: a Defender full scan run by hand, a vendor tool's export, a backup job's result. The report server's <code>hook.php</code> takes it, signed like a report, and the DataReel System Monitor shows it on the computer's host page with its own format, alert rules and display, set by a manifest on the server (DRSM <code>plugins/uploads/&lt;id&gt;</code>). Each upload hook is a file in <code>C:\\ProgramData\\DataReel\\ReportingAgent\\uploads.d</code>:</p>
+""" + code([("", "[upload]"), ("", "id=defender_scan"), ("", "title=Defender threat history"), ("", "format=csv")]) + """
+<p>From an administrator prompt, export the data and queue it. <code>--now</code> asks the service to send it within a few seconds; without it the file goes with the next report. A tool can also write its file to <code>C:\\ProgramData\\DataReel\\ReportingAgent\\uploads\\&lt;id&gt;</code> (under a name that starts with a dot or ends in <code>.tmp</code>, then renamed).</p>
+""" + code([("", "powershell \"Get-MpThreatDetection | Select-Object InitialDetectionTime,ThreatID,ActionSuccess,Resources | Export-Csv -NoTypeInformation C:\\scans\\threats.csv\""),
+            ("", '"C:\\Program Files\\DataReel\\ReportingAgent\\drra_svc.exe" submit --hook defender_scan --now C:\\scans\\threats.csv'),
+            ("", '"C:\\Program Files\\DataReel\\ReportingAgent\\drra_svc.exe" uploads')]) + """
+<p><code>drra_svc.exe uploads</code> lists the upload hooks and their state, and <code>send-uploads</code> sends the queued files at once. Sent files are kept in <code>sent\\</code> next to the queue, and the report's UPLOADS section has each hook's state. The server only takes a hook that has a manifest, from a registered computer, about itself; set <code>[hooks] manifest_dir</code> in <code>server.ini</code> (see <a href="configuration.html#server">Server settings</a>). Formats: <code>drsm-lines</code>, <code>kv-sections</code>, <code>json</code>, <code>csv</code>, <code>xccdf-results</code>, <code>text</code> and <code>html</code>. Hook uploads use the HTTPS delivery method.</p>
 
 <h2 id="usage">Usage for trends</h2>
 <p>PERFORMANCE, DISK USAGE and NETWORK are <code>name=value</code> lines that a monitor such as the DataReel System Monitor can graph. The names match the DRSM Linux metrics where there is one. The network counters are running totals, so take the difference between two reports for a rate. Idle virtual adapters with no traffic are left out. <code>report.php</code> shows them as a Usage panel.</p>
@@ -619,7 +637,7 @@ page("building.html", "Build from source",
 <h2 id="build">Build</h2>
 <p>Open an <strong>x64 Native Tools Command Prompt for VS</strong> (or run <code>vcvars64.bat</code>) in the source folder:</p>
 """ + code([("", "nmake               rem programs and the event message DLL"),
-            ("", "nmake installer     rem output\\drra_setup_3.3-beta1.exe"),
+            ("", "nmake installer     rem output\\drra_setup_3.3-beta2.exe"),
             ("", "nmake clean")]) + """
 
 <h2 id="files">Source files</h2>
@@ -627,6 +645,7 @@ page("building.html", "Build from source",
     ["<code>drra_svc.cpp</code>", "The service: main loop, report builder"],
     ["<code>common.cpp</code>, <code>common.h</code>", "Settings, inventory collection, CIFS and SCP delivery, HTTPS upload"],
     ["<code>agent_auth.cpp</code>, <code>agent_auth.h</code>", "Machine key, certificate, signing, registration, multipart POST"],
+    ["<code>uploads.cpp</code>, <code>uploads.h</code>", "Hook uploads: upload hook files, the spool folders, <code>submit</code>, sending to <code>hook.php</code>"],
     ["<code>send_test_report.cpp</code>", "Sends one report now"],
     ["<code>drra_messages.mc</code>", "Event log message DLL"],
     ["<code>drra_installer.iss</code>", "Inno Setup script"],
@@ -683,10 +702,16 @@ page("troubleshooting.html", "Troubleshooting",
 # ---------------------------------------------------------------- changelog
 page("changelog.html", "What's new",
      "DataReel Reporting Agent for Windows release history.",
-     [("v33", "Release 3.3 beta 1")],
+     [("v33b2", "Release 3.3 beta 2"), ("v33", "Release 3.3 beta 1")],
      """
 <h1>What's new</h1>
-<p class="lead">Release 3.3 beta 1 (3.3-beta1) is the first public release of the DataReel Reporting Agent for Windows. It is a beta: test it on a few computers before a wide rollout.</p>
+<p class="lead">Release 3.3 beta 2 (3.3-beta2) adds hook uploads. Release 3.3 beta 1 was the first public release of the DataReel Reporting Agent for Windows. Both are betas: test them on a few computers before a wide rollout.</p>
+
+<h2 id="v33b2">Release 3.3 beta 2 <span class="badge new">October 2026</span></h2>
+<ul>
+  <li><strong>Hook uploads:</strong> send reports from other sources, such as a Defender scan run by hand or a backup job's result, with <code>drra_svc.exe submit --hook &lt;id&gt; [--now] &lt;file&gt;</code> or the upload spool folders. The server's new <code>hook.php</code> checks the signature and a manifest per hook, and the DataReel System Monitor shows each upload on the computer's page with its own rules. See <a href="reports.html#uploads">Hook uploads</a>.</li>
+  <li>New <code>[uploads]</code> settings and <code>[https] hook_path</code>; the report has an UPLOADS section. <code>install_server.sh</code> installs <code>hook.php</code> and <code>hook_lib.php</code>, and <code>server.ini</code> has a <code>[hooks]</code> section.</li>
+</ul>
 
 <h2 id="v33">Release 3.3 beta 1 <span class="badge new">October 2026</span></h2>
 <p>Release 3.3 beta 1 turns an in-house tool, written for a deployment of 120 laptops, into a package anyone can install.</p>

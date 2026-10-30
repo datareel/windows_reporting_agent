@@ -23,11 +23,17 @@
 </header>
 <div class="layout">
   <nav class="sidebar" aria-label="Documentation">
-    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html" class="active" aria-current="page">What's new</a><div class="toc"><a href="#v33">Release 3.3 beta 1</a></div><h4>Links</h4><a href="https://datareel.com/windows_reporting_agent/demo/">Live demo</a><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html">Reports and status page</a><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html" class="active" aria-current="page">What's new</a><div class="toc"><a href="#v33b2">Release 3.3 beta 2</a><a href="#v33">Release 3.3 beta 1</a></div><h4>Links</h4><a href="https://datareel.com/windows_reporting_agent/demo/">Live demo</a><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
   </nav>
   <main class="content" id="main">
 <h1>What's new</h1>
-<p class="lead">Release 3.3 beta 1 (3.3-beta1) is the first public release of the DataReel Reporting Agent for Windows. It is a beta: test it on a few computers before a wide rollout.</p>
+<p class="lead">Release 3.3 beta 2 (3.3-beta2) adds hook uploads. Release 3.3 beta 1 was the first public release of the DataReel Reporting Agent for Windows. Both are betas: test them on a few computers before a wide rollout.</p>
+
+<h2 id="v33b2">Release 3.3 beta 2 <span class="badge new">October 2026</span></h2>
+<ul>
+  <li><strong>Hook uploads:</strong> send reports from other sources, such as a Defender scan run by hand or a backup job's result, with <code>drra_svc.exe submit --hook &lt;id&gt; [--now] &lt;file&gt;</code> or the upload spool folders. The server's new <code>hook.php</code> checks the signature and a manifest per hook, and the DataReel System Monitor shows each upload on the computer's page with its own rules. See <a href="reports.html#uploads">Hook uploads</a>.</li>
+  <li>New <code>[uploads]</code> settings and <code>[https] hook_path</code>; the report has an UPLOADS section. <code>install_server.sh</code> installs <code>hook.php</code> and <code>hook_lib.php</code>, and <code>server.ini</code> has a <code>[hooks]</code> section.</li>
+</ul>
 
 <h2 id="v33">Release 3.3 beta 1 <span class="badge new">October 2026</span></h2>
 <p>Release 3.3 beta 1 turns an in-house tool, written for a deployment of 120 laptops, into a package anyone can install.</p>

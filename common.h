@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#define AGENT_VERSION "3.3-beta1"
+#define AGENT_VERSION "3.3-beta2"
 #define AGENT_INI_FILE "drra.ini"
 
 // Agent settings, loaded from AGENT_INI_FILE in the same directory as the
@@ -19,6 +19,7 @@ struct AgentConfig {
     int server_port;                // port
     std::string upload_path;        // upload_path
     std::string register_path;      // register_path
+    std::string hook_path;          // hook_path: hook uploads, empty = hook.php next to upload_path
     std::string enrollment_token;   // enrollment_token
     bool use_https;                 // use_https
     bool ignore_cert_revocation;    // ignore_cert_revocation
@@ -43,6 +44,11 @@ struct AgentConfig {
     std::string users_dir;          // users_dir
     int event_lookback_days;        // event_lookback_days
     std::string data_dir;           // data_dir: agent certificate and registration state
+    // [uploads] hook uploads
+    bool uploads_enabled;           // enabled
+    std::string uploads_dir;        // dir: one <id>.ini per upload hook
+    std::string uploads_spool_dir;  // spool_dir: <spool_dir>\<id> takes the files
+    long long uploads_max_bytes;    // max_bytes: largest file, an upload hook may set less
     // Full path of the INI file that was read
     std::string ini_path;
 };

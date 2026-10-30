@@ -69,3 +69,18 @@ public = 0
 ; Measure report ages from this time instead of now: an epoch time, or
 ; "fleet" for the time in reports_dir/fleet.json (gen_sample_fleet.py)
 reference_time =
+
+[hooks]
+; Hook uploads: reports from other sources that agents send to hook.php
+; (drra_svc.exe submit, the agent's upload spool folders).
+; 1 = on, 0 = off
+enabled = 1
+; Hook manifests: the DRSM plugins/uploads folder (<id>/plugin.conf), or a
+; folder of <id>.conf copies. Only hook IDs with a manifest are taken.
+; Empty = no hooks are taken.
+manifest_dir =
+; Where hook payloads are kept: <dir>/<host>/<id>/latest.* and history/.
+; Default <data_dir>/hooks. DRSM reads it (UPLOADS_DIR in the host files).
+dir =
+; Largest payload, in bytes. A manifest's MAX_BYTES may set less.
+max_bytes = 20000000

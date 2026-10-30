@@ -32,7 +32,7 @@
 <h2 id="format">Report format</h2>
 <p>Reports are saved as <code>&lt;hostname&gt;_windows_report_agent.txt</code> in <code>reports_dir</code>. The header lines are <code>KEY: value</code> pairs, and each section starts with its name and a colon and ends with <code>END</code> and the name:</p>
 <pre><code>DataReel Reporting Agent report from host pc-0142
-VERSION: 3.3-beta1
+VERSION: 3.3-beta2
 HOSTNAME: pc-0142
 ETIME: 1792971236
 DATETIME: Sun Oct 25 19:33:56 2026
@@ -50,6 +50,18 @@ END INSTALLED WINDOWS PATCHES</code></pre>
 
 <h2 id="sections">Sections</h2>
 <div class="table-wrap"><table><thead><tr><th>Section</th><th>Contents</th></tr></thead><tbody><tr><td>SERVICE TAG AND BARCODE</td><td>Service tag (BIOS serial number, the Dell service tag on Dell computers) and asset tag from WMI</td></tr><tr><td>IP ADDRESS</td><td>IPv4 addresses of the network adapters that are up</td></tr><tr><td>PERFORMANCE</td><td>CPU count and use (sampled over 5 seconds), memory total, available and used, commit charge, processes, threads, uptime</td></tr><tr><td>DISK USAGE</td><td>Size, used, free and percent used of each local fixed drive</td></tr><tr><td>NETWORK</td><td>Per adapter that is up: link speed, bytes, packets, errors and discards received and sent, totals since the adapter came up</td></tr><tr><td>USERS</td><td>Profile folders in <code>users_dir</code></td></tr><tr><td>ALL INSTALLED PROGRAMS</td><td>Name and version of every program in the 64-bit and 32-bit uninstall registry keys</td></tr><tr><td>WINDOWS DEFENDER ALERTS</td><td>Critical, error and warning events from the Defender event log for <code>event_lookback_days</code></td></tr><tr><td>INSTALLED WINDOWS PATCHES</td><td>Windows Update installation history</td></tr><tr><td>HOT FIXES</td><td>Installed hotfixes from WMI (<code>Win32_QuickFixEngineering</code>)</td></tr></tbody></table></div>
+
+<h2 id="uploads">Hook uploads</h2>
+<p>A hook upload sends a report from another source with the agent: a Defender full scan run by hand, a vendor tool's export, a backup job's result. The report server's <code>hook.php</code> takes it, signed like a report, and the DataReel System Monitor shows it on the computer's host page with its own format, alert rules and display, set by a manifest on the server (DRSM <code>plugins/uploads/&lt;id&gt;</code>). Each upload hook is a file in <code>C:\ProgramData\DataReel\ReportingAgent\uploads.d</code>:</p>
+<pre><code>[upload]
+id=defender_scan
+title=Defender threat history
+format=csv</code></pre>
+<p>From an administrator prompt, export the data and queue it. <code>--now</code> asks the service to send it within a few seconds; without it the file goes with the next report. A tool can also write its file to <code>C:\ProgramData\DataReel\ReportingAgent\uploads\&lt;id&gt;</code> (under a name that starts with a dot or ends in <code>.tmp</code>, then renamed).</p>
+<pre><code>powershell "Get-MpThreatDetection | Select-Object InitialDetectionTime,ThreatID,ActionSuccess,Resources | Export-Csv -NoTypeInformation C:\scans\threats.csv"
+"C:\Program Files\DataReel\ReportingAgent\drra_svc.exe" submit --hook defender_scan --now C:\scans\threats.csv
+"C:\Program Files\DataReel\ReportingAgent\drra_svc.exe" uploads</code></pre>
+<p><code>drra_svc.exe uploads</code> lists the upload hooks and their state, and <code>send-uploads</code> sends the queued files at once. Sent files are kept in <code>sent\</code> next to the queue, and the report's UPLOADS section has each hook's state. The server only takes a hook that has a manifest, from a registered computer, about itself; set <code>[hooks] manifest_dir</code> in <code>server.ini</code> (see <a href="configuration.html#server">Server settings</a>). Formats: <code>drsm-lines</code>, <code>kv-sections</code>, <code>json</code>, <code>csv</code>, <code>xccdf-results</code>, <code>text</code> and <code>html</code>. Hook uploads use the HTTPS delivery method.</p>
 
 <h2 id="usage">Usage for trends</h2>
 <p>PERFORMANCE, DISK USAGE and NETWORK are <code>name=value</code> lines that a monitor such as the DataReel System Monitor can graph. The names match the DRSM Linux metrics where there is one. The network counters are running totals, so take the difference between two reports for a rate. Idle virtual adapters with no traffic are left out. <code>report.php</code> shows them as a Usage panel.</p>

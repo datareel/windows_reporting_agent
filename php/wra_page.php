@@ -84,7 +84,7 @@ footer { color:var(--muted); font-size:13px; text-align:center; padding:24px; }
 function wra_page_end() {
 ?>
 </main>
-<footer>DataReel Reporting Agent for Windows 3.3 beta 1 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+<footer>DataReel Reporting Agent for Windows 3.3 beta 2 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
 </body>
 </html>
 <?php

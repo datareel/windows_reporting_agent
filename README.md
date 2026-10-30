@@ -28,6 +28,7 @@ a browser. It is also at <https://datareel.com/windows_reporting_agent/>.
 - [Approving agents](#approving-agents)
 - [Agent settings](#agent-settings)
 - [Server settings](#server-settings)
+- [Hook uploads](#hook-uploads)
 - [Security](#security)
 - [The fleet status page](#the-fleet-status-page) (and DRSM)
 - [Building from source](#building-from-source)
@@ -208,7 +209,7 @@ For Group Policy, PDQ Deploy, a login script or any other software
 deployment tool, pass the settings on the command line:
 
 ```
-drra_setup_3.3-beta1.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
+drra_setup_3.3-beta2.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
     /SERVER=reports.example.com /PORT=443 /URLPATH=/windows_reporting_agent/upload ^
     /TOKEN=<enrollment token>
 ```
@@ -358,6 +359,49 @@ and `reports_dir` and `data_dir` relative to `server.ini`.
 
 An agent that sends a wrong token is refused. An agent that sends no
 token is registered as pending.
+
+## Hook uploads
+
+A hook upload sends a report from another source with the agent: a
+Defender full scan run by hand, a vendor tool's export, a backup job's
+result. The report server's `hook.php` takes it, signed like a report,
+and the DataReel System Monitor shows it on the computer's host page
+with its own format, alert rules and display, set by a manifest on the
+server (DRSM `plugins/uploads/<id>`). Each upload hook is a file in
+`C:\ProgramData\DataReel\ReportingAgent\uploads.d`:
+
+```
+[upload]
+id=defender_scan
+title=Defender threat history
+format=csv
+```
+
+From an administrator prompt, export the data and queue it. `--now`
+asks the service to send it within a few seconds; without it the file
+goes out with the next report.
+
+```
+powershell "Get-MpThreatDetection | Select-Object InitialDetectionTime,ThreatID,ActionSuccess,Resources | Export-Csv -NoTypeInformation C:\scans\threats.csv"
+"C:\Program Files\DataReel\ReportingAgent\drra_svc.exe" submit --hook defender_scan --now C:\scans\threats.csv
+"C:\Program Files\DataReel\ReportingAgent\drra_svc.exe" uploads
+```
+
+A tool can also write its file to
+`C:\ProgramData\DataReel\ReportingAgent\uploads\<id>\` (under a name
+that starts with a dot or ends in `.tmp`, then renamed). Both folders
+are limited to SYSTEM and Administrators. Sent files are kept in
+`sent\` next to the queue, and the report's UPLOADS section has each
+hook's state. Hook uploads use the https delivery method; settings are
+in `[uploads]` (and `[https] hook_path`).
+
+On the server, `hook.php` only takes a hook ID that has a manifest in
+`[hooks] manifest_dir` (the DRSM `plugins/uploads` folder), from a
+registered computer, about itself. It parses each upload once
+(`drsm-lines`, `kv-sections`, `json`, `csv`, `xccdf-results`, `text`,
+`html`) and keeps it in `[hooks] dir`, by default
+`<data_dir>/hooks/<host>/<id>/`. See "Hook uploads" in DRSM's
+PLUGINS.md.
 
 ## Security
 
@@ -511,6 +555,8 @@ will report.
 | `get_service_tag.exe` | Service tag and asset tag |
 | `svccontrol.exe`, `svcconfig.exe` | Start, stop, query and configure the service |
 | `drra_svc.exe set-cifs-password` | Save the `[cifs] user` share password, encrypted |
+| `drra_svc.exe submit --hook <id> [--now] <file>` | Queue a report from another tool for upload hook `<id>`, see [Hook uploads](#hook-uploads) |
+| `drra_svc.exe send-uploads`, `drra_svc.exe uploads` | Send the queued upload files now; list the upload hooks and their state |
 
 ## Troubleshooting
 

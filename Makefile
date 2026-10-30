@@ -22,8 +22,11 @@ common.obj: common.cpp common.h agent_auth.h
 agent_auth.obj: agent_auth.cpp agent_auth.h common.h
 	cl $(CXXFLAGS) /c agent_auth.cpp
 
-drra_svc.exe: drra_svc.cpp drra_messages.h common.h common.obj agent_auth.obj
-	cl $(CXXFLAGS) drra_svc.cpp common.obj agent_auth.obj
+uploads.obj: uploads.cpp uploads.h agent_auth.h common.h
+	cl $(CXXFLAGS) /c uploads.cpp
+
+drra_svc.exe: drra_svc.cpp drra_messages.h common.h uploads.h common.obj agent_auth.obj uploads.obj
+	cl $(CXXFLAGS) drra_svc.cpp common.obj agent_auth.obj uploads.obj
 
 send_test_report.exe: send_test_report.cpp common.h common.obj agent_auth.obj
 	cl $(CXXFLAGS) send_test_report.cpp common.obj agent_auth.obj

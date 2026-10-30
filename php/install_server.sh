@@ -48,7 +48,7 @@ fi
 WEB_DIR="${1%/}"
 DATA_DIR="${2%/}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
-PAGES="register.php upload.php admin.php status.php report.php wra_lib.php wra_page.php wra_auth.php"
+PAGES="register.php upload.php hook.php admin.php status.php report.php wra_lib.php wra_page.php wra_auth.php hook_lib.php"
 
 case "$WEB_DIR" in /*) ;; *) echo "WEB_DIR must be an absolute path"; exit 1 ;; esac
 case "$DATA_DIR" in /*) ;; *) echo "DATA_DIR must be an absolute path"; exit 1 ;; esac
@@ -79,7 +79,7 @@ write_file() {
     fi
 }
 
-run mkdir -p "${WEB_DIR}/upload" "${DATA_DIR}/agents" "${DATA_DIR}/nonces" "${DATA_DIR}/reports"
+run mkdir -p "${WEB_DIR}/upload" "${DATA_DIR}/agents" "${DATA_DIR}/nonces" "${DATA_DIR}/reports" "${DATA_DIR}/hooks"
 
 echo "Copying pages to ${WEB_DIR}/upload"
 for f in ${PAGES}; do
@@ -96,7 +96,7 @@ if [ "${DRSM_CONFIG}" != "" ]; then
 SetEnv WRA_SERVER_INI ${DATA_DIR}/server.ini
 
 # Only included by the other pages
-<FilesMatch "^wra_(lib|page|auth)\.php$">
+<FilesMatch "^(wra_(lib|page|auth)|hook_lib)\.php$">
     Require all denied
 </FilesMatch>
 
@@ -109,7 +109,7 @@ else
 SetEnv WRA_SERVER_INI ${DATA_DIR}/server.ini
 
 # Only included by the other pages
-<FilesMatch "^wra_(lib|page|auth)\.php$">
+<FilesMatch "^(wra_(lib|page|auth)|hook_lib)\.php$">
     Require all denied
 </FilesMatch>
 
@@ -156,8 +156,9 @@ fi
 cat <<EOF
 
 Next steps:
- - Let the web server user write to ${DATA_DIR}, for example:
-     setfacl -R -m u:apache:rwX -m d:u:apache:rwX ${DATA_DIR}
+ - Let the web server user write to ${DATA_DIR}, and the DRSM user
+   ($(whoami) here) read what it writes (hook uploads), for example:
+     setfacl -R -m u:apache:rwX -m d:u:apache:rwX -m d:u:$(whoami):rX ${DATA_DIR}
    With SELinux enforcing, also:
      semanage fcontext -a -t httpd_sys_rw_content_t "${DATA_DIR}(/.*)?"
      restorecon -R ${DATA_DIR}

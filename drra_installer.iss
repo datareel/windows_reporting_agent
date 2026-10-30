@@ -7,7 +7,7 @@
 ; The setup asks for the report server on a wizard page. For unattended
 ; installs (GPO, PDQ, a login script) pass the settings on the command line:
 ;
-;   drra_setup_3.3-beta1.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+;   drra_setup_3.3-beta2.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
 ;       /SERVER=reports.example.com /PORT=443 /URLPATH=/windows/upload
 ;       /TOKEN=<enrollment token> [/HTTP] [/INTERVAL=<minutes>]
 ;
@@ -32,7 +32,7 @@
 ; password and machine key are kept, the old service and folders are
 ; removed.
 
-#define AppVersion "3.3-beta1"
+#define AppVersion "3.3-beta2"
 ; Windows file versions must be numbers
 #define FileVersion "3.3.0.0"
 #define SvcName "DataReelReportAgent"
@@ -85,6 +85,9 @@ Source: "drra.ini"; DestDir: "{app}"; Flags: onlyifdoesntexist uninsneveruninsta
 [Dirs]
 ; Agent certificate, registration state, report and log file
 Name: "{#DataDir}"; Flags: uninsneveruninstall
+; Hook uploads: one <id>.ini per upload hook, and the queue of files to send
+Name: "{#DataDir}\uploads.d"; Flags: uninsneveruninstall
+Name: "{#DataDir}\uploads"; Flags: uninsneveruninstall
 
 [Registry]
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Services\EventLog\Application\{#SvcName}"; ValueType: string; ValueName: "EventMessageFile"; ValueData: "{app}\drra_messages.dll"; Flags: uninsdeletekey

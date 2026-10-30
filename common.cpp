@@ -162,6 +162,7 @@ void SetDefaultAgentConfig(AgentConfig &cfg)
   cfg.server_port = INTERNET_DEFAULT_HTTPS_PORT;
   cfg.upload_path = "/windows/upload/upload.php";
   cfg.register_path = "/windows/upload/register.php";
+  cfg.hook_path.clear();
   cfg.enrollment_token.clear();
   cfg.use_https = true;
   cfg.ignore_cert_revocation = true;
@@ -182,6 +183,10 @@ void SetDefaultAgentConfig(AgentConfig &cfg)
   cfg.users_dir = "C:\\Users";
   cfg.event_lookback_days = 30;
   cfg.data_dir = "C:\\ProgramData\\DataReel\\ReportingAgent";
+  cfg.uploads_enabled = true;
+  cfg.uploads_dir = "C:\\ProgramData\\DataReel\\ReportingAgent\\uploads.d";
+  cfg.uploads_spool_dir = "C:\\ProgramData\\DataReel\\ReportingAgent\\uploads";
+  cfg.uploads_max_bytes = 20000000;
   cfg.ini_path.clear();
 }
 
@@ -262,6 +267,7 @@ int LoadAgentConfig(AgentConfig &cfg, std::string &output)
   cfg.server_port = ReadIniInt("https", "port", cfg.server_port, ini_path);
   cfg.upload_path = ReadIniString("https", "upload_path", cfg.upload_path, ini_path);
   cfg.register_path = ReadIniString("https", "register_path", cfg.register_path, ini_path);
+  cfg.hook_path = ReadIniString("https", "hook_path", cfg.hook_path, ini_path);
   cfg.enrollment_token = ReadIniString("https", "enrollment_token", cfg.enrollment_token, ini_path);
   cfg.ignore_cert_revocation = ReadIniInt("https", "ignore_cert_revocation", cfg.ignore_cert_revocation ? 1 : 0, ini_path) != 0;
 
@@ -285,6 +291,14 @@ int LoadAgentConfig(AgentConfig &cfg, std::string &output)
   cfg.event_lookback_days = ReadIniInt("agent", "event_lookback_days", cfg.event_lookback_days, ini_path);
   cfg.data_dir = ReadIniString("agent", "data_dir", cfg.data_dir, ini_path);
 
+  cfg.uploads_enabled = ReadIniInt("uploads", "enabled", cfg.uploads_enabled ? 1 : 0, ini_path) != 0;
+  cfg.uploads_dir = ReadIniString("uploads", "dir", cfg.uploads_dir, ini_path);
+  cfg.uploads_spool_dir = ReadIniString("uploads", "spool_dir", cfg.uploads_spool_dir, ini_path);
+  {
+    long long n = _atoi64(ReadIniString("uploads", "max_bytes", "", ini_path).c_str());
+    if(n > 0) cfg.uploads_max_bytes = n;
+  }
+
   // Keep values in a usable range
   if(cfg.server_port <= 0 || cfg.server_port > 65535) {
     output += "WARNING - Invalid port in " + ini_path + ", using default\n";
@@ -300,6 +314,7 @@ int LoadAgentConfig(AgentConfig &cfg, std::string &output)
   if(cfg.event_lookback_days < 1) cfg.event_lookback_days = 1;
   if(cfg.upload_path.empty() || cfg.upload_path[0] != '/') cfg.upload_path = "/" + cfg.upload_path;
   if(cfg.register_path.empty() || cfg.register_path[0] != '/') cfg.register_path = "/" + cfg.register_path;
+  if(!cfg.hook_path.empty() && cfg.hook_path[0] != '/') cfg.hook_path = "/" + cfg.hook_path;
 
   output += "Loaded settings from " + ini_path + "\n";
 
@@ -633,26 +648,10 @@ int UploadFile(const AgentConfig &cfg, const std::string& input_fname, const std
     return -1;
   }
 
-  // Register the agent certificate before sending anything. The server
-  // must approve it, either by an admin or with the enrollment token.
-  // The state names the key and the server, so a new key or a different
-  // server (host, port or register page) means registering again
-  std::string server_id = cfg.server_host + ":" + std::to_string(cfg.server_port) + cfg.register_path;
-  std::string approved_state = "approved " + id.key_fingerprint + " " + server_id;
-  if(ReadRegistrationState(cfg) != approved_state) {
-    std::string status;
-    if(RegisterAgent(cfg, id, status, output_str) != 0) {
-      FreeAgentIdentity(id);
-      return -1;
-    }
-    if(status != "approved") {
-      WriteRegistrationState(cfg, status + " " + id.key_fingerprint + " " + server_id);
-      output_str += "ERROR - Report not sent, this agent is " + status + " on the server. "
-	"Approve host " + id.hostname + " with key fingerprint " + id.key_fingerprint + " on the admin page";
-      FreeAgentIdentity(id);
-      return -1;
-    }
-    WriteRegistrationState(cfg, approved_state);
+  // Register the agent certificate before sending anything
+  if(EnsureAgentApproved(cfg, id, output_str) != 0) {
+    FreeAgentIdentity(id);
+    return -1;
   }
 
   // Sign the upload: hostname, time, a one time nonce and the report hash

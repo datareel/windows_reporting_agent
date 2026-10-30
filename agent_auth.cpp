@@ -353,6 +353,21 @@ int HttpPostMultipart(const AgentConfig &cfg, const std::string &path, const For
 		      const std::string &file_field, const std::string &file_name, const std::string &file_content,
 		      DWORD &http_status, std::string &response, std::string &error)
 {
+  std::vector<FormFile> files;
+  if (!file_field.empty()) {
+    FormFile f;
+    f.field = file_field;
+    f.file_name = file_name;
+    f.content_type = "text/plain";
+    f.content = file_content;
+    files.push_back(f);
+  }
+  return HttpPostMultipartFiles(cfg, path, fields, files, http_status, response, error);
+}
+
+int HttpPostMultipartFiles(const AgentConfig &cfg, const std::string &path, const FormFields &fields,
+			   const std::vector<FormFile> &files, DWORD &http_status, std::string &response, std::string &error)
+{
   http_status = 0;
   response.clear();
   error.clear();
@@ -405,11 +420,11 @@ int HttpPostMultipart(const AgentConfig &cfg, const std::string &path, const For
     body += "Content-Disposition: form-data; name=\"" + field.first + "\"\r\n\r\n";
     body += field.second + "\r\n";
   }
-  if (!file_field.empty()) {
+  for (const FormFile &f : files) {
     body += "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"" + file_field + "\"; filename=\"" + file_name + "\"\r\n";
-    body += "Content-Type: text/plain\r\n\r\n";
-    body += file_content + "\r\n";
+    body += "Content-Disposition: form-data; name=\"" + f.field + "\"; filename=\"" + f.file_name + "\"\r\n";
+    body += "Content-Type: " + f.content_type + "\r\n\r\n";
+    body += f.content + "\r\n";
   }
   body += "--" + boundary + "--\r\n";
 
@@ -501,4 +516,125 @@ int RegisterAgent(const AgentConfig &cfg, const AgentIdentity &id, std::string &
   }
   output += "Registration status from server: " + status + "\n";
   return 0;
+}
+
+//
+// Purpose:
+//   Registers the agent certificate when the saved state does not say
+//   it is approved on this server. The server must approve it, either
+//   by an admin or with the enrollment token. The state names the key
+//   and the server, so a new key or a different server (host, port or
+//   register page) means registering again.
+//
+// Return value:
+//   0 when the agent is approved
+//
+int EnsureAgentApproved(const AgentConfig &cfg, const AgentIdentity &id, std::string &output)
+{
+  std::string server_id = cfg.server_host + ":" + std::to_string(cfg.server_port) + cfg.register_path;
+  std::string approved_state = "approved " + id.key_fingerprint + " " + server_id;
+  if(ReadRegistrationState(cfg) == approved_state) return 0;
+  std::string status;
+  if(RegisterAgent(cfg, id, status, output) != 0) return -1;
+  if(status != "approved") {
+    WriteRegistrationState(cfg, status + " " + id.key_fingerprint + " " + server_id);
+    output += "ERROR - Nothing sent, this agent is " + status + " on the server. "
+      "Approve host " + id.hostname + " with key fingerprint " + id.key_fingerprint + " on the admin page\n";
+    return -1;
+  }
+  WriteRegistrationState(cfg, approved_state);
+  return 0;
+}
+
+// The hook upload page: hook_path, else hook.php next to the upload page
+std::string HookPagePath(const AgentConfig &cfg)
+{
+  if(!cfg.hook_path.empty()) return cfg.hook_path;
+  size_t slash = cfg.upload_path.rfind('/');
+  return (slash == std::string::npos ? std::string("/") : cfg.upload_path.substr(0, slash + 1)) + "hook.php";
+}
+
+//
+// Purpose:
+//   Sends one hook upload to hook.php, signed like a report upload. The
+//   signature covers the hook ID, the host the data is about, the
+//   envelope and the payload.
+//
+// Return value:
+//   0 when the server saved it, 1 when the server cannot take it yet
+//   (no hook.php, no manifest for the hook, too soon), so the file stays
+//   spooled without counting as a delivery error, -1 on any other error
+//
+int UploadHook(const AgentConfig &cfg, const std::string &hook_id, const std::string &subject,
+	       const std::string &envelope, const FormFile &payload, std::string &status, std::string &output)
+{
+  status.clear();
+  AgentIdentity id;
+  if(LoadOrCreateAgentIdentity(cfg, id, output) != 0) return -1;
+  if(EnsureAgentApproved(cfg, id, output) != 0) {
+    FreeAgentIdentity(id);
+    return -1;
+  }
+
+  std::string timestamp = std::to_string((long long)std::time(nullptr));
+  std::string nonce = RandomHex(16);
+  std::string to_sign = "hook\n" + id.hostname + "\n" + timestamp + "\n" + nonce + "\n" + hook_id + "\n" + subject +
+    "\n" + Sha256Hex(envelope) + "\n" + Sha256Hex(payload.content);
+  std::string signature;
+  if(SignString(id, to_sign, signature, output) != 0) {
+    FreeAgentIdentity(id);
+    return -1;
+  }
+  std::string hostname = id.hostname;
+  FreeAgentIdentity(id);
+
+  FormFields fields;
+  fields.push_back(std::make_pair("hostname", hostname));
+  fields.push_back(std::make_pair("timestamp", timestamp));
+  fields.push_back(std::make_pair("nonce", nonce));
+  fields.push_back(std::make_pair("hookId", hook_id));
+  fields.push_back(std::make_pair("subject", subject));
+  fields.push_back(std::make_pair("signature", signature));
+
+  std::vector<FormFile> files;
+  FormFile env;
+  env.field = "envelope";
+  env.file_name = hook_id + ".meta";
+  env.content_type = "text/plain";
+  env.content = envelope;
+  files.push_back(env);
+  files.push_back(payload);
+
+  DWORD http_status = 0;
+  std::string response, error;
+  std::string path = HookPagePath(cfg);
+  if(HttpPostMultipartFiles(cfg, path, fields, files, http_status, response, error) != 0) {
+    output += error + "\n";
+    return -1;
+  }
+  while(!response.empty() && (response.back() == '\r' || response.back() == '\n')) response.pop_back();
+  status = ParseStatus(response);
+  if(http_status == 200 && status == "ok") {
+    output += "Upload " + hook_id + " sent: " + response + "\n";
+    return 0;
+  }
+  if(http_status == 404 && status.empty()) {
+    status = "no_hook_page";
+    output += "WARNING - The server has no " + path + " yet, upload " + hook_id + " stays spooled\n";
+    return 1;
+  }
+  if(status == "unknown_hook") {
+    output += "WARNING - The server has no manifest for upload hook " + hook_id + ", it stays spooled: " + response + "\n";
+    return 1;
+  }
+  if(status == "too_soon") {
+    output += "Upload " + hook_id + ": the server takes one file at a time, the next one goes out next cycle\n";
+    return 1;
+  }
+  if(status == "not_registered" || status == "pending" || status == "revoked" || status == "key_mismatch") {
+    WriteRegistrationState(cfg, "");
+  }
+  if(status.empty()) status = "http_" + std::to_string(http_status);
+  output += "ERROR - Upload " + hook_id + " rejected (HTTP " + std::to_string(http_status) + "): " + response + "\n";
+  return -1;
 }

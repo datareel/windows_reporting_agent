@@ -32,6 +32,14 @@ struct AgentIdentity {
 
 typedef std::vector<std::pair<std::string, std::string> > FormFields;
 
+// One file in a multipart upload
+struct FormFile {
+    std::string field;              // form field name
+    std::string file_name;          // file name sent to the server
+    std::string content_type;       // text/plain, text/csv ...
+    std::string content;
+};
+
 std::string GetAgentHostname();
 bool CreateDirTree(const std::string &dir);
 std::string Sha256Hex(const std::string &data);
@@ -42,9 +50,15 @@ int SignString(const AgentIdentity &id, const std::string &data, std::string &si
 int HttpPostMultipart(const AgentConfig &cfg, const std::string &path, const FormFields &fields,
                       const std::string &file_field, const std::string &file_name, const std::string &file_content,
                       DWORD &http_status, std::string &response, std::string &error);
+int HttpPostMultipartFiles(const AgentConfig &cfg, const std::string &path, const FormFields &fields,
+                           const std::vector<FormFile> &files, DWORD &http_status, std::string &response, std::string &error);
 std::string ParseStatus(const std::string &response);
 std::string ReadRegistrationState(const AgentConfig &cfg);
 void WriteRegistrationState(const AgentConfig &cfg, const std::string &state);
 int RegisterAgent(const AgentConfig &cfg, const AgentIdentity &id, std::string &status, std::string &output);
+int EnsureAgentApproved(const AgentConfig &cfg, const AgentIdentity &id, std::string &output);
+std::string HookPagePath(const AgentConfig &cfg);
+int UploadHook(const AgentConfig &cfg, const std::string &hook_id, const std::string &subject,
+               const std::string &envelope, const FormFile &payload, std::string &status, std::string &output);
 
 #endif
