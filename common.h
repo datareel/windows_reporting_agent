@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#define AGENT_VERSION "3.4"
+#define AGENT_VERSION "3.5"
 #define AGENT_INI_FILE "drra.ini"
 
 // Agent settings, loaded from AGENT_INI_FILE in the same directory as the
@@ -49,6 +49,9 @@ struct AgentConfig {
     std::string uploads_dir;        // dir: one <id>.ini per upload hook
     std::string uploads_spool_dir;  // spool_dir: <spool_dir>\<id> takes the files
     long long uploads_max_bytes;    // max_bytes: largest file, an upload hook may set less
+    // [scan] vulnerability scan (Windows Update Agent)
+    bool scan_enabled;              // enabled: 0 = only by hand (drra_svc.exe scan)
+    int scan_interval_hours;        // interval_hours
     // Full path of the INI file that was read
     std::string ini_path;
 };

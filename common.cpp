@@ -187,6 +187,8 @@ void SetDefaultAgentConfig(AgentConfig &cfg)
   cfg.uploads_dir = "C:\\ProgramData\\DataReel\\ReportingAgent\\uploads.d";
   cfg.uploads_spool_dir = "C:\\ProgramData\\DataReel\\ReportingAgent\\uploads";
   cfg.uploads_max_bytes = 20000000;
+  cfg.scan_enabled = false;
+  cfg.scan_interval_hours = 24;
   cfg.ini_path.clear();
 }
 
@@ -298,6 +300,10 @@ int LoadAgentConfig(AgentConfig &cfg, std::string &output)
     long long n = _atoi64(ReadIniString("uploads", "max_bytes", "", ini_path).c_str());
     if(n > 0) cfg.uploads_max_bytes = n;
   }
+
+  cfg.scan_enabled = ReadIniInt("scan", "enabled", cfg.scan_enabled ? 1 : 0, ini_path) != 0;
+  cfg.scan_interval_hours = ReadIniInt("scan", "interval_hours", cfg.scan_interval_hours, ini_path);
+  if(cfg.scan_interval_hours < 1) cfg.scan_interval_hours = 1;
 
   // Keep values in a usable range
   if(cfg.server_port <= 0 || cfg.server_port > 65535) {

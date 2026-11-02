@@ -41,6 +41,7 @@
 #include "common.h"
 #include "agent_auth.h"
 #include "uploads.h"
+#include "scan.h"
 // Windows Update Agent (WUA) API
 #include <wuapi.h>
 #include <comutil.h>
@@ -62,6 +63,7 @@ int get_all_patches(std::string &output);
 VOID SvcInstall(void);
 int SetCifsPasswordCommand(const char *password);
 int UploadsCommand(int argc, TCHAR *argv[]);
+int ScanCommand(int argc, TCHAR *argv[]);
 void AppendLog(const AgentConfig &cfg, const std::string &text);
 VOID WINAPI SvcCtrlHandler( DWORD ); 
 VOID WINAPI SvcMain( DWORD, LPTSTR * ); 
@@ -101,6 +103,13 @@ int __cdecl _tmain(int argc, TCHAR *argv[])
 		   lstrcmpi( argv[1], TEXT("uploads")) == 0) )
     {
       return UploadsCommand(argc, argv);
+    }
+  
+  // scan [--no-send]: vulnerability scan with Windows Update, then a
+  // report with the results right away
+  if( argc > 1 && lstrcmpi( argv[1], TEXT("scan")) == 0 )
+    {
+      return ScanCommand(argc, argv);
     }
   
   // TO_DO: Add any additional services for the process to this table.
@@ -172,6 +181,45 @@ int UploadsCommand(int argc, TCHAR *argv[])
     else fputs(section.c_str(), stdout);
     printf("Hook upload page: %s\n", HookPagePath(cfg).c_str());
   }
+  return rv;
+}
+
+//
+// Purpose:
+//   Vulnerability scan run by an administrator:
+//     scan             scan, then send a report with the results now
+//     scan --no-send   scan and print the results only
+//   Every report after that carries this scan until the next one.
+//
+// Return value:
+//   0 on success
+//
+int ScanCommand(int argc, TCHAR *argv[])
+{
+  AgentConfig cfg;
+  std::string output;
+  LoadAgentConfig(cfg, output);
+  output.clear();
+  bool send = true;
+  for(int i = 2; i < argc; i++) {
+    if(lstrcmpi(argv[i], TEXT("--no-send")) == 0) send = false;
+    else {
+      fprintf(stderr, "Usage: drra_svc.exe scan [--no-send]\n");
+      return 2;
+    }
+  }
+  printf("Searching Windows Update for updates to install, this can take a few minutes\n");
+  int rv = RunScan(cfg, output) == 0 ? 0 : 1;
+  if(!send) {
+    fputs(output.c_str(), stdout);
+    fputs(ScanReportSection(cfg).c_str(), stdout);
+    return rv;
+  }
+  std::string report_output;
+  if(upload_agent_report(cfg, report_output) != 0 || report_output.find("ERROR - ") != std::string::npos) rv = 1;
+  output += report_output;
+  AppendLog(cfg, output);
+  fputs(output.c_str(), stdout);
   return rv;
 }
 
@@ -395,6 +443,10 @@ VOID SvcInit( DWORD dwArgc, LPTSTR *lpszArgv)
       std::string output;
       AgentConfig cfg;
       LoadAgentConfig(cfg, output);
+
+      // Vulnerability scan every interval_hours when [scan] enabled=1,
+      // otherwise only by hand (drra_svc.exe scan)
+      if(ScanDue(cfg)) RunScan(cfg, output);
 
       // Upload the report every report_interval_minutes
       std::string report_output;
@@ -710,6 +762,9 @@ int upload_agent_report(const AgentConfig &cfg, std::string &output) {
   report_data += "END HOT FIXES\n";
 
   report_data += "\n";
+
+  // Last vulnerability scan (Windows Update)
+  report_data += ScanReportSection(cfg);
 
   // State of the hook uploads (reports from other sources)
   report_data += UploadReportSection(cfg);

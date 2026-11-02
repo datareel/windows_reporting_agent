@@ -25,8 +25,11 @@ agent_auth.obj: agent_auth.cpp agent_auth.h common.h
 uploads.obj: uploads.cpp uploads.h agent_auth.h common.h
 	cl $(CXXFLAGS) /c uploads.cpp
 
-drra_svc.exe: drra_svc.cpp drra_messages.h common.h uploads.h common.obj agent_auth.obj uploads.obj
-	cl $(CXXFLAGS) drra_svc.cpp common.obj agent_auth.obj uploads.obj
+scan.obj: scan.cpp scan.h common.h agent_auth.h
+	cl $(CXXFLAGS) /c scan.cpp
+
+drra_svc.exe: drra_svc.cpp drra_messages.h common.h uploads.h scan.h common.obj agent_auth.obj uploads.obj scan.obj
+	cl $(CXXFLAGS) drra_svc.cpp common.obj agent_auth.obj uploads.obj scan.obj
 
 send_test_report.exe: send_test_report.cpp common.h common.obj agent_auth.obj
 	cl $(CXXFLAGS) send_test_report.cpp common.obj agent_auth.obj
@@ -71,7 +74,7 @@ installer: all
 # The programs, message DLL, default settings and docs in a zip file, for
 # installs without setup.exe (see build.txt). Keep VERSION in step with
 # AGENT_VERSION in common.h and AppVersion in drra_installer.iss.
-VERSION = 3.4
+VERSION = 3.5
 BINZIP  = output\drra_$(VERSION)_bin_x64.zip
 
 binzip: all
