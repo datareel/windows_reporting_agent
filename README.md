@@ -577,6 +577,7 @@ Open a **x64 Native Tools Command Prompt for Visual Studio** (or run
 ```
 nmake               build the programs and the event message DLL
 nmake installer     build output\drra_setup_<version>.exe
+nmake utilszip      build output\drra-utils-<version>.zip (utils\, release asset)
 nmake clean
 ```
 

@@ -82,6 +82,21 @@ binzip: all
 	-del /q $(BINZIP) 2>nul
 	tar -a -c -f $(BINZIP) $(PROGS) drra_messages.dll drra.ini README.md LICENSE
 
+# The utils (utils\README.md) as their own release asset, next to
+# setup.exe: utils\ without the tests, unpacking to drra-utils-<version>\
+UTILSZIP = output\drra-utils-$(VERSION).zip
+UTILSDIR = output\drra-utils-$(VERSION)
+
+utilszip:
+	-mkdir output 2>nul
+	-del /q $(UTILSZIP) $(UTILSZIP).sha256sum 2>nul
+	if exist $(UTILSDIR) rd /s /q $(UTILSDIR)
+	-robocopy utils $(UTILSDIR) /E /XD tests /NFL /NDL /NJH /NJS /NP
+	copy /y LICENSE $(UTILSDIR) >nul
+	cd output && tar -a -c -f drra-utils-$(VERSION).zip drra-utils-$(VERSION)
+	if exist $(UTILSDIR) rd /s /q $(UTILSDIR)
+	powershell -NoProfile -Command "(Get-FileHash '$(UTILSZIP)' -Algorithm SHA256).Hash.ToLower() + '  drra-utils-$(VERSION).zip' | Set-Content -Encoding ascii '$(UTILSZIP).sha256sum'
+
 clean:
 	-del /q *.exe *.obj *.bin 2>nul
 	-del /q drra_messages.dll drra_messages.res drra_messages.rc 2>nul

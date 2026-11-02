@@ -12,6 +12,15 @@ Monitor (DRSM) dashboard. They use the agent's hook uploads
 |------|-----------------|
 | [logon_watch](logon_watch/README.md) | Failed logons and lockouts since the last run, remote apart from the computer's own |
 
+## Download
+
+Each agent release has the utils as their own asset,
+`drra-utils-<version>.zip` next to `drra_setup_<version>.exe` (built by
+`nmake utilszip`). It unpacks to `drra-utils-<version>\` with the files
+of `utils\` below, without the tests (those are in the source tarball).
+The steps below work the same from that folder:
+`powershell -ExecutionPolicy Bypass -File install_util.ps1 <name>`.
+
 ## Layout
 
 Each util lives in `utils\<name>\`:
