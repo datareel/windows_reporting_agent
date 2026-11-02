@@ -23,7 +23,7 @@
 </header>
 <div class="layout">
   <nav class="sidebar" aria-label="Documentation">
-    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html" class="active" aria-current="page">Reports and status page</a><div class="toc"><a href="#format">Report format</a><a href="#sections">Sections</a><a href="#usage">Usage for trends</a><a href="#status">Fleet status page</a><a href="#demo">Live demo</a><a href="#script">Status page script</a><a href="#drsm">DRSM</a></div><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/windows_reporting_agent/demo/">Live demo</a><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
+    <h4>Get started</h4><a href="index.html">Overview</a><a href="install.html">Install the agent</a><a href="server.html">Set up the report server</a><h4>Using the agent</h4><a href="approve.html">Approve computers</a><a href="configuration.html">Configuration</a><a href="reports.html" class="active" aria-current="page">Reports and status page</a><div class="toc"><a href="#format">Report format</a><a href="#sections">Sections</a><a href="#scan">Vulnerability scan</a><a href="#usage">Usage for trends</a><a href="#status">Fleet status page</a><a href="#demo">Live demo</a><a href="#script">Status page script</a><a href="#drsm">DRSM</a></div><h4>Reference</h4><a href="security.html">Security</a><a href="building.html">Build from source</a><a href="troubleshooting.html">Troubleshooting</a><a href="changelog.html">What's new</a><h4>Links</h4><a href="https://datareel.com/windows_reporting_agent/demo/">Live demo</a><a href="https://datareel.com/downloads/windows_reporting_agent/">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>
   </nav>
   <main class="content" id="main">
 <h1>Reports and status page</h1>
@@ -32,7 +32,7 @@
 <h2 id="format">Report format</h2>
 <p>Reports are saved as <code>&lt;hostname&gt;_windows_report_agent.txt</code> in <code>reports_dir</code>. The header lines are <code>KEY: value</code> pairs, and each section starts with its name and a colon and ends with <code>END</code> and the name:</p>
 <pre><code>DataReel Reporting Agent report from host pc-0142
-VERSION: 3.4
+VERSION: 3.5
 HOSTNAME: pc-0142
 ETIME: 1792971236
 DATETIME: Sun Oct 25 19:33:56 2026
@@ -49,7 +49,25 @@ END INSTALLED WINDOWS PATCHES</code></pre>
 <p><code>ETIME</code> is the report time in seconds since 1970 (UTC), for check-in age calculations.</p>
 
 <h2 id="sections">Sections</h2>
-<div class="table-wrap"><table><thead><tr><th>Section</th><th>Contents</th></tr></thead><tbody><tr><td>SERVICE TAG AND BARCODE</td><td>Service tag (BIOS serial number, the Dell service tag on Dell computers) and asset tag from WMI</td></tr><tr><td>IP ADDRESS</td><td>IPv4 addresses of the network adapters that are up</td></tr><tr><td>PERFORMANCE</td><td>CPU count and use (sampled over 5 seconds), memory total, available and used, commit charge, processes, threads, uptime</td></tr><tr><td>DISK USAGE</td><td>Size, used, free and percent used of each local fixed drive</td></tr><tr><td>NETWORK</td><td>Per adapter that is up: link speed, bytes, packets, errors and discards received and sent, totals since the adapter came up</td></tr><tr><td>USERS</td><td>Profile folders in <code>users_dir</code></td></tr><tr><td>ALL INSTALLED PROGRAMS</td><td>Name and version of every program in the 64-bit and 32-bit uninstall registry keys</td></tr><tr><td>WINDOWS DEFENDER ALERTS</td><td>Critical, error and warning events from the Defender event log for <code>event_lookback_days</code></td></tr><tr><td>INSTALLED WINDOWS PATCHES</td><td>Windows Update installation history</td></tr><tr><td>HOT FIXES</td><td>Installed hotfixes from WMI (<code>Win32_QuickFixEngineering</code>)</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Section</th><th>Contents</th></tr></thead><tbody><tr><td>SERVICE TAG AND BARCODE</td><td>Service tag (BIOS serial number, the Dell service tag on Dell computers) and asset tag from WMI</td></tr><tr><td>IP ADDRESS</td><td>IPv4 addresses of the network adapters that are up</td></tr><tr><td>PERFORMANCE</td><td>CPU count and use (sampled over 5 seconds), memory total, available and used, commit charge, processes, threads, uptime</td></tr><tr><td>DISK USAGE</td><td>Size, used, free and percent used of each local fixed drive</td></tr><tr><td>NETWORK</td><td>Per adapter that is up: link speed, bytes, packets, errors and discards received and sent, totals since the adapter came up</td></tr><tr><td>USERS</td><td>Profile folders in <code>users_dir</code></td></tr><tr><td>ALL INSTALLED PROGRAMS</td><td>Name and version of every program in the 64-bit and 32-bit uninstall registry keys</td></tr><tr><td>WINDOWS DEFENDER ALERTS</td><td>Critical, error and warning events from the Defender event log for <code>event_lookback_days</code></td></tr><tr><td>INSTALLED WINDOWS PATCHES</td><td>Windows Update installation history</td></tr><tr><td>HOT FIXES</td><td>Installed hotfixes from WMI (<code>Win32_QuickFixEngineering</code>)</td></tr><tr><td>VULNERABILITIES</td><td>The last <a href="#scan">vulnerability scan</a>: security updates still to install, with their MSRC severity and CVEs</td></tr></tbody></table></div>
+
+<h2 id="scan">Vulnerability scan</h2>
+<p>From an administrator command prompt, <code>drra_svc.exe scan</code> asks the Windows Update Agent for the updates this computer has not installed, the same search Settings &gt; Windows Update runs (against Windows Update, or the WSUS server a policy sets), and sends a report with the results right away. <code>--no-send</code> only prints them.</p>
+<pre><code>"C:\Program Files\DataReel\ReportingAgent\drra_svc.exe" scan
+"C:\Program Files\DataReel\ReportingAgent\drra_svc.exe" scan --no-send</code></pre>
+<p>Every report after a scan carries its results until the next scan, in a VULNERABILITIES section with the same format as the DataReel Reporting Agent for Linux (<code>source=wua</code>). Each security update is listed by KB number with its MSRC severity (Critical, Important, Moderate, Low; <code>Unknown</code> when Microsoft did not rate it), the CVEs it fixes and the products it updates; other updates waiting (drivers, definitions, preview updates) are <code>other</code> lines:</p>
+<pre><code>VULNERABILITIES:
+mode=manual
+source=wua
+feed=Windows Update
+scan_etime=1793590595
+scan_seconds=9
+status=ok
+critical=1 important=0 moderate=0 low=0 unknown=0 total=1 cves=2 other=1
+advisory id=KB5066835 severity=Critical issued=2026-10-14 cves=CVE-2026-1001,CVE-2026-1002 packages="Windows 11" title="2026-10 Cumulative Update for Windows 11 (KB5066835)"
+other id=KB2267602 classification="Definition Updates" issued=2026-11-02 title="Security Intelligence Update for Microsoft Defender Antivirus - KB2267602"
+END VULNERABILITIES</code></pre>
+<p>The agent does not scan on its own by default, because a search uses CPU and network for seconds to minutes, which adds up on cloud servers. <code>[scan] enabled=1</code> in <code>drra.ini</code> scans every <code>interval_hours</code> instead (<code>mode=auto</code>). The DataReel System Monitor <code>windows/vulnerabilities</code> plugin alerts on the results and shows them on its Vulnerabilities page next to the Linux agent hosts. Windows Update leaves the severity and CVE fields empty on some updates (Windows Insider builds and some .NET updates); the plugin counts those security updates as Important. Vulnerabilities in programs that do not update through Windows Update (browsers, Java, vendor tools) are not part of the scan.</p>
 
 <h2 id="uploads">Hook uploads</h2>
 <p>A hook upload sends a report from another source with the agent: a Defender full scan run by hand, a vendor tool's export, a backup job's result. The report server's <code>hook.php</code> takes it, signed like a report, and the DataReel System Monitor shows it on the computer's host page with its own format, alert rules and display, set by a manifest on the server (DRSM <code>plugins/uploads/&lt;id&gt;</code>). Each upload hook is a file in <code>C:\ProgramData\DataReel\ReportingAgent\uploads.d</code>:</p>
@@ -104,7 +122,7 @@ unwanted_apps = "uTorrent*, CCleaner*"</code></pre>
 
 <h2 id="drsm">DRSM</h2>
 <p>The <a href="https://datareel.com/info_drsm.php">DataReel System Monitor</a> shows Windows computers on its dashboard next to the Linux hosts. DRSM never connects to a Windows computer: its <code>wra</code> collector runs the Windows plugins on the monitor host against each computer's last report in <code>WRA_REPORTS_DIR</code>. The simplest way to get the reports there is the agent's <a href="configuration.html#cifs">file share delivery</a> to a share on the monitor host. Reports that arrive by HTTPS on another server have to be copied over.</p>
-<div class="table-wrap"><table><thead><tr><th>DRSM plugin</th><th>Checks</th></tr></thead><tbody><tr><td><code>windows/checkin</code></td><td>The computer reported recently and completely, agent version</td></tr><tr><td><code>windows/defender</code></td><td>Defender threats, protection turned off, old definitions</td></tr><tr><td><code>windows/patches</code></td><td>Age of the newest Windows patch</td></tr><tr><td><code>windows/apps</code></td><td>Required and forbidden programs</td></tr><tr><td><code>windows/resources</code></td><td>CPU, memory, disk and network from the <a href="#usage">usage sections</a>, for the trends page</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>DRSM plugin</th><th>Checks</th></tr></thead><tbody><tr><td><code>windows/checkin</code></td><td>The computer reported recently and completely, agent version</td></tr><tr><td><code>windows/defender</code></td><td>Defender threats, protection turned off, old definitions</td></tr><tr><td><code>windows/patches</code></td><td>Age of the newest Windows patch</td></tr><tr><td><code>windows/apps</code></td><td>Required and forbidden programs</td></tr><tr><td><code>windows/resources</code></td><td>CPU, memory, disk and network from the <a href="#usage">usage sections</a>, for the trends page</td></tr><tr><td><code>windows/vulnerabilities</code></td><td>Security updates still to install from the last <a href="#scan">vulnerability scan</a>, for the Vulnerabilities page (agent 3.5; add it to <code>PLUGINS</code>)</td></tr></tbody></table></div>
 <pre><code><span class="c"># DRSM etc/hosts/_defaults.conf</span>
 WRA_REPORTS_DIR=/path/to/reports
 
@@ -118,6 +136,6 @@ PLUGINS="windows/checkin windows/defender windows/patches windows/apps windows/r
 <nav class="pager" aria-label="Previous and next page"><a class="card prev" href="configuration.html"><small>Previous</small>Configuration</a><a class="card next" href="security.html"><small>Next</small>Security</a></nav>
   </main>
 </div>
-<footer class="foot">DataReel Reporting Agent for Windows 3.4 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+<footer class="foot">DataReel Reporting Agent for Windows 3.5 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
 </body>
 </html>

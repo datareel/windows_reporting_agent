@@ -97,7 +97,7 @@ def page(fname, title, desc, toc, body):
 <nav class="pager" aria-label="Previous and next page">%(pager)s</nav>
   </main>
 </div>
-<footer class="foot">DataReel Reporting Agent for Windows 3.4 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
+<footer class="foot">DataReel Reporting Agent for Windows 3.5 &middot; GNU General Public License v3 &middot; <a href="https://datareel.com/info_windows_reporting_agent.php">datareel.com</a></footer>
 </body>
 </html>
 """ % dict(full_title=full_title, desc=desc, menu=ICON_MENU, demo=demo_btn, dl=DL, dlicon=ICON_DL,
@@ -228,7 +228,7 @@ page("install.html", "Install the agent",
 ]) + """
 
 <h2 id="setup">Run the setup</h2>
-<p>Download <code>drra_setup_3.4.exe</code> from the <a href=\"""" + DL + """">downloads page</a> and run it as an administrator. After the license and install folder pages it asks for the report server:</p>
+<p>Download <code>drra_setup_3.5.exe</code> from the <a href=\"""" + DL + """">downloads page</a> and run it as an administrator. After the license and install folder pages it asks for the report server:</p>
 """ + table(["Field", "Example", "Notes"], [
     ["Server host name", "<code>reports.example.com</code>", "The web server that runs the PHP pages"],
     ["Port", "<code>443</code>", "443 for HTTPS"],
@@ -240,7 +240,7 @@ page("install.html", "Install the agent",
 
 <h2 id="silent">Unattended installs</h2>
 <p>For Group Policy, PDQ Deploy, a login script or any other deployment tool, pass the settings on the command line:</p>
-""" + code([("", "drra_setup_3.4.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^"),
+""" + code([("", "drra_setup_3.5.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^"),
             ("", "    /SERVER=reports.example.com /PORT=443 /URLPATH=/windows_reporting_agent/upload ^"),
             ("", "    /TOKEN=<enrollment token>")]) + """
 """ + table(["Switch", "Meaning"], [
@@ -416,6 +416,8 @@ AGENT_ROWS = [
     ["uploads", "dir", "C:\\ProgramData\\DataReel\\ReportingAgent\\uploads.d", "One <code>&lt;id&gt;.ini</code> per upload hook"],
     ["uploads", "spool_dir", "C:\\ProgramData\\DataReel\\ReportingAgent\\uploads", "<code>&lt;spool_dir&gt;\\&lt;id&gt;</code> takes the files to send"],
     ["uploads", "max_bytes", "20000000", "Largest file an upload hook may send"],
+    ["scan", "enabled", "0", "<a href=\"reports.html#scan\">Vulnerability scan</a>: 1 scans every <code>interval_hours</code>, 0 only by hand with <code>drra_svc.exe scan</code>"],
+    ["scan", "interval_hours", "24", "Hours between scans when <code>enabled=1</code>"],
 ]
 SERVER_ROWS = [
     ["paths", "reports_dir", "/var/www/html/windows/reports", "Where accepted reports are saved"],
@@ -477,7 +479,7 @@ page("configuration.html", "Configuration",
 # ---------------------------------------------------------------- reports
 page("reports.html", "Reports and status page",
      "The DataReel Reporting Agent report format and the fleet status page built from the reports.",
-     [("format", "Report format"), ("sections", "Sections"), ("usage", "Usage for trends"), ("status", "Fleet status page"), ("demo", "Live demo"), ("script", "Status page script"), ("drsm", "DRSM")],
+     [("format", "Report format"), ("sections", "Sections"), ("scan", "Vulnerability scan"), ("usage", "Usage for trends"), ("status", "Fleet status page"), ("demo", "Live demo"), ("script", "Status page script"), ("drsm", "DRSM")],
      """
 <h1>Reports and status page</h1>
 <p class="lead">Each computer's report is a plain text file, easy to read, grep and diff. The server keeps the latest one per computer.</p>
@@ -485,7 +487,7 @@ page("reports.html", "Reports and status page",
 <h2 id="format">Report format</h2>
 <p>Reports are saved as <code>&lt;hostname&gt;_windows_report_agent.txt</code> in <code>reports_dir</code>. The header lines are <code>KEY: value</code> pairs, and each section starts with its name and a colon and ends with <code>END</code> and the name:</p>
 """ + code([("", "DataReel Reporting Agent report from host pc-0142"),
-            ("", "VERSION: 3.4"),
+            ("", "VERSION: 3.5"),
             ("", "HOSTNAME: pc-0142"),
             ("", "ETIME: 1792971236"),
             ("", "DATETIME: Sun Oct 25 19:33:56 2026"),
@@ -513,7 +515,20 @@ page("reports.html", "Reports and status page",
     ["WINDOWS DEFENDER ALERTS", "Critical, error and warning events from the Defender event log for <code>event_lookback_days</code>"],
     ["INSTALLED WINDOWS PATCHES", "Windows Update installation history"],
     ["HOT FIXES", "Installed hotfixes from WMI (<code>Win32_QuickFixEngineering</code>)"],
+    ["VULNERABILITIES", "The last <a href=\"#scan\">vulnerability scan</a>: security updates still to install, with their MSRC severity and CVEs"],
 ]) + """
+
+<h2 id="scan">Vulnerability scan</h2>
+<p>From an administrator command prompt, <code>drra_svc.exe scan</code> asks the Windows Update Agent for the updates this computer has not installed, the same search Settings &gt; Windows Update runs (against Windows Update, or the WSUS server a policy sets), and sends a report with the results right away. <code>--no-send</code> only prints them.</p>
+""" + code([("", '"C:\\Program Files\\DataReel\\ReportingAgent\\drra_svc.exe" scan'),
+            ("", '"C:\\Program Files\\DataReel\\ReportingAgent\\drra_svc.exe" scan --no-send')]) + """
+<p>Every report after a scan carries its results until the next scan, in a VULNERABILITIES section with the same format as the DataReel Reporting Agent for Linux (<code>source=wua</code>). Each security update is listed by KB number with its MSRC severity (Critical, Important, Moderate, Low; <code>Unknown</code> when Microsoft did not rate it), the CVEs it fixes and the products it updates; other updates waiting (drivers, definitions, preview updates) are <code>other</code> lines:</p>
+""" + code([("", "VULNERABILITIES:"), ("", "mode=manual"), ("", "source=wua"), ("", "feed=Windows Update"), ("", "scan_etime=1793590595"), ("", "scan_seconds=9"), ("", "status=ok"),
+            ("", "critical=1 important=0 moderate=0 low=0 unknown=0 total=1 cves=2 other=1"),
+            ("", 'advisory id=KB5066835 severity=Critical issued=2026-10-14 cves=CVE-2026-1001,CVE-2026-1002 packages="Windows 11" title="2026-10 Cumulative Update for Windows 11 (KB5066835)"'),
+            ("", 'other id=KB2267602 classification="Definition Updates" issued=2026-11-02 title="Security Intelligence Update for Microsoft Defender Antivirus - KB2267602"'),
+            ("", "END VULNERABILITIES")]) + """
+<p>The agent does not scan on its own by default, because a search uses CPU and network for seconds to minutes, which adds up on cloud servers. <code>[scan] enabled=1</code> in <code>drra.ini</code> scans every <code>interval_hours</code> instead (<code>mode=auto</code>). The DataReel System Monitor <code>windows/vulnerabilities</code> plugin alerts on the results and shows them on its Vulnerabilities page next to the Linux agent hosts. Windows Update leaves the severity and CVE fields empty on some updates (Windows Insider builds and some .NET updates); the plugin counts those security updates as Important. Vulnerabilities in programs that do not update through Windows Update (browsers, Java, vendor tools) are not part of the scan.</p>
 
 <h2 id="uploads">Hook uploads</h2>
 <p>A hook upload sends a report from another source with the agent: a Defender full scan run by hand, a vendor tool's export, a backup job's result. The report server's <code>hook.php</code> takes it, signed like a report, and the DataReel System Monitor shows it on the computer's host page with its own format, alert rules and display, set by a manifest on the server (DRSM <code>plugins/uploads/&lt;id&gt;</code>). Each upload hook is a file in <code>C:\\ProgramData\\DataReel\\ReportingAgent\\uploads.d</code>:</p>
@@ -561,6 +576,7 @@ page("reports.html", "Reports and status page",
     ["<code>windows/patches</code>", "Age of the newest Windows patch"],
     ["<code>windows/apps</code>", "Required and forbidden programs"],
     ["<code>windows/resources</code>", "CPU, memory, disk and network from the <a href=\"#usage\">usage sections</a>, for the trends page"],
+    ["<code>windows/vulnerabilities</code>", "Security updates still to install from the last <a href=\"#scan\">vulnerability scan</a>, for the Vulnerabilities page (agent 3.5; add it to <code>PLUGINS</code>)"],
 ]) + """
 """ + code([("c", "# DRSM etc/hosts/_defaults.conf"),
             ("", "WRA_REPORTS_DIR=/path/to/reports"),
@@ -637,8 +653,8 @@ page("building.html", "Build from source",
 <h2 id="build">Build</h2>
 <p>Open an <strong>x64 Native Tools Command Prompt for VS</strong> (or run <code>vcvars64.bat</code>) in the source folder:</p>
 """ + code([("", "nmake               rem programs and the event message DLL"),
-            ("", "nmake installer     rem output\\drra_setup_3.4.exe"),
-            ("", "nmake binzip        rem output\\drra_3.4_bin_x64.zip"),
+            ("", "nmake installer     rem output\\drra_setup_3.5.exe"),
+            ("", "nmake binzip        rem output\\drra_3.5_bin_x64.zip"),
             ("", "nmake clean")]) + """
 
 <h2 id="files">Source files</h2>
@@ -646,6 +662,7 @@ page("building.html", "Build from source",
     ["<code>drra_svc.cpp</code>", "The service: main loop, report builder"],
     ["<code>common.cpp</code>, <code>common.h</code>", "Settings, inventory collection, CIFS and SCP delivery, HTTPS upload"],
     ["<code>agent_auth.cpp</code>, <code>agent_auth.h</code>", "Machine key, certificate, signing, registration, multipart POST"],
+    ["<code>scan.cpp</code>, <code>scan.h</code>", "Vulnerability scan with the Windows Update Agent API, the VULNERABILITIES section"],
     ["<code>uploads.cpp</code>, <code>uploads.h</code>", "Hook uploads: upload hook files, the spool folders, <code>submit</code>, sending to <code>hook.php</code>"],
     ["<code>send_test_report.cpp</code>", "Sends one report now"],
     ["<code>drra_messages.mc</code>", "Event log message DLL"],
@@ -703,10 +720,16 @@ page("troubleshooting.html", "Troubleshooting",
 # ---------------------------------------------------------------- changelog
 page("changelog.html", "What's new",
      "DataReel Reporting Agent for Windows release history.",
-     [("v34", "Release 3.4"), ("v33b2", "Release 3.3 beta 2"), ("v33", "Release 3.3 beta 1")],
+     [("v35", "Release 3.5"), ("v34", "Release 3.4"), ("v33b2", "Release 3.3 beta 2"), ("v33", "Release 3.3 beta 1")],
      """
 <h1>What's new</h1>
 <p class="lead">Release 3.4 is the first stable release of the DataReel Reporting Agent for Windows, for Windows 11, Windows Server 2022 and Windows Server 2025. It has everything from the 3.3 betas: release 3.3 beta 2 added hook uploads, and release 3.3 beta 1 was the first public release.</p>
+
+<h2 id="v35">Release 3.5 <span class="badge new">November 2026</span></h2>
+<ul>
+  <li><strong>Vulnerability scan:</strong> <code>drra_svc.exe scan</code> asks the Windows Update Agent for the updates not installed yet and sends a report right away; each security update has its KB number, MSRC severity and CVEs. The report has a VULNERABILITIES section in the Linux agent's format (<code>source=wua</code>), for the DataReel System Monitor <code>windows/vulnerabilities</code> plugin and Vulnerabilities page. Scans run by hand only unless <code>[scan] enabled=1</code>. See <a href="reports.html#scan">Vulnerability scan</a>.</li>
+  <li><strong>Downloads:</strong> <code>drra_setup_3.5.exe</code> and <code>drra_3.5_bin_x64.zip</code>.</li>
+</ul>
 
 <h2 id="v34">Release 3.4 <span class="badge new">October 2026</span></h2>
 <ul>

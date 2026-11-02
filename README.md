@@ -28,6 +28,7 @@ a browser. It is also at <https://datareel.com/windows_reporting_agent/>.
 - [Approving agents](#approving-agents)
 - [Agent settings](#agent-settings)
 - [Server settings](#server-settings)
+- [Vulnerability scan](#vulnerability-scan)
 - [Hook uploads](#hook-uploads)
 - [Security](#security)
 - [The fleet status page](#the-fleet-status-page) (and DRSM)
@@ -54,6 +55,7 @@ with these sections:
 | WINDOWS DEFENDER ALERTS | Critical, error and warning events from the Defender event log for the last 30 days |
 | INSTALLED WINDOWS PATCHES | Windows Update installation history |
 | HOT FIXES | Installed hotfixes from WMI (`Win32_QuickFixEngineering`) |
+| VULNERABILITIES | The last vulnerability scan: security updates still to install with their MSRC severity and CVEs, see [Vulnerability scan](#vulnerability-scan) |
 
 The PERFORMANCE, DISK USAGE and NETWORK sections are `name=value` lines
 for trend graphs, for example in the DataReel System Monitor (DRSM). The
@@ -209,7 +211,7 @@ For Group Policy, PDQ Deploy, a login script or any other software
 deployment tool, pass the settings on the command line:
 
 ```
-drra_setup_3.4.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
+drra_setup_3.5.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
     /SERVER=reports.example.com /PORT=443 /URLPATH=/windows_reporting_agent/upload ^
     /TOKEN=<enrollment token>
 ```
@@ -287,6 +289,8 @@ on the next cycle without a restart. Any setting left out uses its default.
 | agent | users_dir | `C:\Users` | Folder listed in the USERS section |
 | agent | event_lookback_days | `30` | Days of Defender alerts to include |
 | agent | data_dir | `C:\ProgramData\DataReel\ReportingAgent` | Agent certificate and registration state |
+| scan | enabled | `0` | `1` scans every `interval_hours`; `0` scans only by hand with `drra_svc.exe scan` |
+| scan | interval_hours | `24` | Hours between scans when `enabled=1` |
 
 ### CIFS share
 
@@ -359,6 +363,52 @@ and `reports_dir` and `data_dir` relative to `server.ini`.
 
 An agent that sends a wrong token is refused. An agent that sends no
 token is registered as pending.
+
+## Vulnerability scan
+
+From an administrator command prompt, `drra_svc.exe scan` asks the
+Windows Update Agent for the updates this computer has not installed,
+the same search Settings > Windows Update runs (against Windows Update,
+or the WSUS server a policy sets), and sends a report with the results
+right away:
+
+```
+"C:\Program Files\DataReel\ReportingAgent\drra_svc.exe" scan
+"C:\Program Files\DataReel\ReportingAgent\drra_svc.exe" scan --no-send
+```
+
+`--no-send` only prints the results. Every report after a scan carries
+its results until the next scan, in a VULNERABILITIES section with the
+same format as the DataReel Reporting Agent for Linux (`source=wua`).
+Each security update is listed by KB number with its MSRC severity
+(Critical, Important, Moderate, Low; `Unknown` when Microsoft did not
+rate it), the CVEs it fixes and the products it updates; other updates
+waiting (drivers, definitions, preview updates) are `other` lines:
+
+```
+VULNERABILITIES:
+mode=manual
+source=wua
+feed=Windows Update
+scan_etime=1793590595
+scan_seconds=9
+status=ok
+critical=1 important=0 moderate=0 low=0 unknown=0 total=1 cves=2 other=1
+advisory id=KB5066835 severity=Critical issued=2026-10-14 cves=CVE-2026-1001,CVE-2026-1002 packages="Windows 11" title="2026-10 Cumulative Update for Windows 11 (KB5066835)"
+other id=KB2267602 classification="Definition Updates" issued=2026-11-02 title="Security Intelligence Update for Microsoft Defender Antivirus - KB2267602 (Version 1.463.83.0)"
+END VULNERABILITIES
+```
+
+The agent does not scan on its own by default, because a search uses
+CPU and network for seconds to minutes, which adds up on cloud
+servers. `[scan] enabled=1` in `drra.ini` scans every `interval_hours`
+(24) instead (`mode=auto`). The DRSM `windows/vulnerabilities` plugin
+alerts on the results and shows them on the DRSM Vulnerabilities page
+next to the Linux agent hosts. Windows Update leaves the severity and
+CVE fields empty on some updates (Windows Insider builds and some .NET
+updates); the plugin counts those security updates as Important.
+Vulnerabilities in programs that do not update through Windows Update
+(browsers, Java, vendor tools) are not part of the scan.
 
 ## Hook uploads
 
@@ -480,6 +530,7 @@ HTTPS on another server have to be copied over.
 | `windows/patches` | Age of the newest Windows patch |
 | `windows/apps` | Required and forbidden programs |
 | `windows/resources` | CPU, memory, disk and network from the usage sections, for the gauges and trends page |
+| `windows/vulnerabilities` | Security updates still to install from the last [vulnerability scan](#vulnerability-scan), for the Vulnerabilities page (agent 3.5, add it to `PLUGINS`) |
 
 DRSM 1.32-beta2 and later include these plugins. For DRSM 1.31, the
 `drsm/` folder of this distribution has the same plugins and an
@@ -554,6 +605,7 @@ will report.
 | `get_ip_address.exe` | IP addresses |
 | `get_service_tag.exe` | Service tag and asset tag |
 | `svccontrol.exe`, `svcconfig.exe` | Start, stop, query and configure the service |
+| `drra_svc.exe scan [--no-send]` | Vulnerability scan with Windows Update, then send a report with the results now; `--no-send` only prints them |
 | `drra_svc.exe set-cifs-password` | Save the `[cifs] user` share password, encrypted |
 | `drra_svc.exe submit --hook <id> [--now] <file>` | Queue a report from another tool for upload hook `<id>`, see [Hook uploads](#hook-uploads) |
 | `drra_svc.exe send-uploads`, `drra_svc.exe uploads` | Send the queued upload files now; list the upload hooks and their state |
