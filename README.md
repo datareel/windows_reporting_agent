@@ -445,6 +445,11 @@ are limited to SYSTEM and Administrators. Sent files are kept in
 hook's state. Hook uploads use the https delivery method; settings are
 in `[uploads]` (and `[https] hook_path`).
 
+Standalone programs that make such reports, for example `logon_watch`
+(failed logons and lockouts, remote apart from the computer's own), are
+in `utils\`. Each one runs without the agent and sends its result with
+`-Submit`; see `utils\README.md`.
+
 On the server, `hook.php` only takes a hook ID that has a manifest in
 `[hooks] manifest_dir` (the DRSM `plugins/uploads` folder), from a
 registered computer, about itself. It parses each upload once
