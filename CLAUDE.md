@@ -1,0 +1,2 @@
+<!-- DataReel Reporting Agent for Windows: AI-assisted install, build, upgrade and support. Before any AI assistance: written management approval under your AI usage policy and approved enterprise AI models only (AGENTS.md, "Before you use AI assistance"). Never read or repeat an enrollment token, password, key or server.ini. Naming an AI tool is a reference only, not an endorsement. -->
+@AGENTS.md

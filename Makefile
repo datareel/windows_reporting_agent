@@ -80,7 +80,7 @@ BINZIP  = output\drra_$(VERSION)_bin_x64.zip
 binzip: all
 	-mkdir output 2>nul
 	-del /q $(BINZIP) 2>nul
-	tar -a -c -f $(BINZIP) $(PROGS) drra_messages.dll drra.ini README.md LICENSE
+	tar -a -c -f $(BINZIP) $(PROGS) drra_messages.dll drra.ini README.md LICENSE AGENTS.md CLAUDE.md GEMINI.md
 
 # The utils (utils\README.md) as their own release asset, next to
 # setup.exe: utils\ without the tests, unpacking to drra-utils-<version>\

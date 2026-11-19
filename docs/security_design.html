@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reporting Agent for Windows security design</title>
+<meta name="description" content="How the DataReel Reporting Agent for Windows protects a fleet inventory: a non-exportable machine key per computer, certificate registration and approval, signed uploads with timestamps and one-time nonces, the report server checks, the file share and SCP deliveries, the protections on the computer, and the limits.">
+<!-- Made by docs/make_docs_html.py from docs/security_design.php
+     (https://datareel.com/windows_reporting_agent/security_design.php); edit the page, not this file. -->
+<style>
+:root {
+  --dr2-text: #1d2430; --dr2-muted: #5b6575; --dr2-bg: #ffffff; --dr2-surface-2: #f3f5f8;
+  --dr2-border-strong: #8a94a6; --dr2-accent: #2a6fdb; --dr2-accent-soft: #e3edfc;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --dr2-text: #e6e9ef; --dr2-muted: #a3acbb; --dr2-bg: #14181f; --dr2-surface-2: #1f2530;
+    --dr2-border-strong: #6c7688; --dr2-accent: #7aa9f5; --dr2-accent-soft: #1d2b44;
+  }
+}
+body { background: var(--dr2-bg); color: var(--dr2-text); margin: 0;
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+article { max-width: 920px; margin: 0 auto; padding: 24px 16px 48px; }
+a { color: var(--dr2-accent); }
+code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em; }
+table { border-collapse: collapse; }
+th, td { border: 1px solid var(--dr2-border-strong); padding: 4px 8px; text-align: left; vertical-align: top; }
+h1 { font-size: 1.7em; margin-top: 0; }
+
+.fc-fig { margin: 18px 0 26px; overflow-x: auto; }
+.fc-fig svg { display: block; width: 100%; max-width: 860px; height: auto; min-width: 560px; }
+.fc-fig figcaption { color: var(--dr2-muted); font-size: 14px; margin-top: 6px; }
+.fc-fig .b { fill: var(--dr2-surface-2); stroke: var(--dr2-border-strong); stroke-width: 1.5; }
+.fc-fig .k { fill: var(--dr2-accent-soft); stroke: var(--dr2-accent); stroke-width: 1.5; }
+.fc-fig text { fill: var(--dr2-text); font: 14px system-ui, -apple-system, "Segoe UI", sans-serif; }
+.fc-fig text.s { fill: var(--dr2-muted); font-size: 12px; }
+.fc-fig .a { stroke: var(--dr2-muted); stroke-width: 1.5; fill: none; marker-end: url(#fc-arrow); }
+.fc-fig .d { stroke: var(--dr2-muted); stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; marker-end: url(#fc-arrow); }
+.fc-fig marker path { fill: var(--dr2-muted); }
+.fc-table { overflow-x: auto; }
+
+</style>
+</head>
+<body>
+<article class="dr2-doc">
+<h1>Reporting Agent for Windows security design</h1>
+<p>How the DataReel Reporting Agent for Windows protects a fleet inventory: a non-exportable machine key per computer, certificate registration and approval, signed uploads with timestamps and one-time nonces, the report server checks, the file share and SCP deliveries, the protections on the computer, and the limits.</p>
+<p>The current copy is at <a href="https://datareel.com/windows_reporting_agent/security_design.php">https://datareel.com/windows_reporting_agent/security_design.php</a>.</p>
+
+
+<p><b>Release:</b> 3.5, with the report server pages of the same release. <b>Audience:</b> security
+reviewers, administrators and anyone deciding whether to run the agent on their computers or trust the
+reports it sends. The source code is published, so everything on this page can be checked against it; the
+design does not depend on keeping it secret. The <a href="https://datareel.com/windows_reporting_agent/index.php">documentation</a>
+has the setup steps, and the programs are on the <a href="https://datareel.com/downloads/windows_reporting_agent/">downloads
+page</a>.</p>
+
+<h2 id="overview">1. What the agent protects, and from whom</h2>
+<p>The agent is a Windows service that collects an inventory of the computer (service tag, IP addresses,
+user profile names, installed programs, Windows updates and hotfixes, Windows Defender alerts, usage
+counters and, after a scan, the security updates still to install) and sends it as a text report to a report
+server, a Windows file share or an SSH server. The goals are:</p>
+<ul>
+<li><b>Only your computers report:</b> the report server keeps a report only from a computer that has
+registered its own key and has been approved by an administrator, or by an enrollment token the site
+chose to use.</li>
+<li><b>Reports cannot be changed or replayed:</b> every upload is signed over the report's hash, the
+computer's name, the time and a one-time value. A changed report, a report sent again later or a report
+signed by another computer is refused.</li>
+<li><b>One computer cannot speak for another:</b> a report is always saved under the name of the computer
+that signed it, and a name stays bound to the first key that registered it.</li>
+<li><b>No stolen identities:</b> the computer's private key is created inside the Windows key store and
+cannot be exported, so copying files from the computer does not copy its identity.</li>
+<li><b>No open ports:</b> the service only makes outgoing connections. Nothing on the network connects to
+it, and the DataReel System Monitor (DRSM) reads the reports without ever connecting to a Windows
+computer.</li>
+<li><b>Inventory kept private:</b> on the computer the report and the agent state are readable only by SYSTEM
+and Administrators; on the network HTTPS keeps it private; on the server the pages that show it need a
+login.</li>
+</ul>
+<p>The agent does not protect against someone who is an administrator on a computer (they can make it send
+any report they like), against an attacker who controls the report server, or against a site that runs the
+server over plain HTTP. It reports what Windows tells it; it is an inventory, not an intrusion detection
+system.</p>
+
+<h2 id="architecture">2. The parts and how they trust each other</h2>
+<figure class="fc-fig">
+<svg viewBox="0 -50 860 350" role="img" aria-label="Architecture: on each Windows computer the DataReelReportAgent service holds a non-exportable machine key in the Windows key store and writes to a data folder limited to SYSTEM and Administrators. It sends signed HTTPS requests to register.php, upload.php and hook.php on the report server, or copies the report to a file share or an SSH server. The server keeps registrations and reports in a data folder outside the web root. admin.php, status.php and report.php need a login. DRSM reads the reports folder and never connects to the computers.">
+<defs><marker id="fc-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="b" x="10" y="20" width="250" height="200" rx="10"/><text x="135" y="44" text-anchor="middle">Windows computer</text>
+<rect class="k" x="30" y="60" width="210" height="50" rx="8"/><text x="135" y="82" text-anchor="middle">Machine key, RSA 3072</text><text class="s" x="135" y="99" text-anchor="middle">Windows key store, not exportable</text>
+<rect class="b" x="30" y="120" width="210" height="40" rx="8"/><text x="135" y="145" text-anchor="middle">DataReelReportAgent service</text>
+<rect class="b" x="30" y="168" width="210" height="44" rx="8"/><text x="135" y="188" text-anchor="middle">ProgramData folder</text><text class="s" x="135" y="204" text-anchor="middle">SYSTEM and Administrators only</text>
+<rect class="b" x="380" y="20" width="250" height="200" rx="10"/><text x="505" y="44" text-anchor="middle">Report server (Apache + PHP)</text>
+<rect class="b" x="400" y="60" width="210" height="44" rx="8"/><text x="505" y="80" text-anchor="middle">register.php, upload.php,</text><text x="505" y="97" text-anchor="middle">hook.php: open, signed</text>
+<rect class="k" x="400" y="112" width="210" height="44" rx="8"/><text x="505" y="132" text-anchor="middle">admin.php, status.php,</text><text x="505" y="149" text-anchor="middle">report.php: login</text>
+<rect class="b" x="400" y="164" width="210" height="48" rx="8"/><text x="505" y="184" text-anchor="middle">DATA_DIR</text><text class="s" x="505" y="200" text-anchor="middle">registrations, nonces, reports</text>
+<rect class="b" x="690" y="20" width="160" height="90" rx="10"/><text x="770" y="50" text-anchor="middle">File share or</text><text x="770" y="68" text-anchor="middle">SSH server</text><text class="s" x="770" y="88" text-anchor="middle">not signed</text>
+<rect class="b" x="690" y="130" width="160" height="90" rx="10"/><text x="770" y="160" text-anchor="middle">DRSM</text><text class="s" x="770" y="180" text-anchor="middle">reads report files,</text><text class="s" x="770" y="196" text-anchor="middle">never connects to Windows</text>
+<path class="a" d="M240,140 L398,82"/><text class="s" x="335" y="134" text-anchor="middle">HTTPS, signed</text>
+<path class="a" d="M135,20 C135,-45 770,-45 770,18"/><text class="s" x="452" y="-36" text-anchor="middle">CIFS or SCP</text>
+<path class="d" d="M612,188 L688,175"/><path class="d" d="M770,110 L770,128"/>
+<text class="s" x="430" y="262" text-anchor="middle">Every connection starts at the computer. The service listens on no port.</text>
+<text class="s" x="430" y="280" text-anchor="middle">Dashed: DRSM reads the reports folder, or a share on the monitor host.</text>
+</svg>
+<figcaption>Figure 1. The agent, the report server and DRSM. Only the HTTPS path is signed.</figcaption>
+</figure>
+<div class="fc-table">
+<table>
+<tr><td><b>Part</b></td><td><b>Trusts</b></td><td><b>Is trusted for</b></td></tr>
+<tr><td>Agent service (LocalSystem)</td><td>Windows (WMI, registry, event log, Windows Update), the settings file, the server's TLS certificate as Windows checks it</td><td>Reporting what Windows tells it about its own computer</td></tr>
+<tr><td><code>register.php</code>, <code>upload.php</code>, <code>hook.php</code></td><td>Nothing in a request until its signature, approval state, time and nonce are checked</td><td>Keeping only approved, signed, fresh reports</td></tr>
+<tr><td><code>admin.php</code>, <code>status.php</code>, <code>report.php</code></td><td>The web server login, or the DRSM dashboard login</td><td>Approving computers and showing the inventory to signed-in people</td></tr>
+<tr><td>DRSM</td><td>The report files in its reports folder</td><td>Alerts, the dashboard, trends and the Vulnerabilities page</td></tr>
+</table>
+</div>
+
+<h2 id="identity">3. The computer's identity</h2>
+<ul>
+<li><b>The key:</b> on its first run the agent creates a 3072-bit RSA key named <code>DataReelReportAgent</code>
+in the Microsoft Software Key Storage Provider, as a machine key (CNG <code>NCRYPT_MACHINE_KEY_FLAG</code>), with
+an export policy of none. Windows keeps the private key; the agent only asks Windows to sign with it, and no
+program, the agent included, can read it out. A computer upgraded from a test build keeps its old key,
+<code>WindowsReportAgent</code>, so it stays approved.</li>
+<li><b>The certificate:</b> a self-signed X.509 certificate for that key, subject <code>CN=&lt;computer
+name&gt;</code> (lower case), SHA-256 with RSA, valid for 20 years, saved as <code>agent_cert.pem</code> in the
+agent data folder. It is not used for TLS: it only carries the public key to the server. On every run the
+agent checks that the saved certificate matches the key and the computer name, and makes a new one if
+not.</li>
+<li><b>The fingerprint:</b> the SHA-256 of the DER public key (SubjectPublicKeyInfo), written to
+<code>drra.log</code> on the computer and shown on <code>admin.php</code>, so an administrator can match the
+two before approving.</li>
+<li><b>Random values</b> (nonces and multipart boundaries) come from <code>BCryptGenRandom</code> with the
+system generator; hashes are SHA-256 from Windows CNG.</li>
+</ul>
+
+<h2 id="register">4. Registration and approval</h2>
+<figure class="fc-fig">
+<svg viewBox="0 0 860 280" role="img" aria-label="Registration: the agent signs register, host name, time, nonce and the SHA-256 of its certificate, and posts them with the certificate and the enrollment token. register.php checks the host name pattern, the nonce format and the time, that the certificate CN is the host name, the signature with the certificate's key, and that the nonce is new. A known host with the same key gets its current state; a known host with another key gets key_mismatch. A new host is saved as pending, or approved when the right enrollment token is sent and auto-approval is on. A wrong token is refused.">
+<rect class="b" x="10" y="20" width="250" height="90" rx="8"/><text x="135" y="44" text-anchor="middle">Agent signs</text><text class="s" x="135" y="64" text-anchor="middle">"register" | host | time | nonce |</text><text class="s" x="135" y="80" text-anchor="middle">SHA-256(certificate)</text><text class="s" x="135" y="98" text-anchor="middle">sends cert + token + signature</text>
+<rect class="b" x="300" y="20" width="250" height="90" rx="8"/><text x="425" y="44" text-anchor="middle">register.php checks</text><text class="s" x="425" y="64" text-anchor="middle">host name, nonce, time window,</text><text class="s" x="425" y="80" text-anchor="middle">CN = host, signature, nonce unused</text><text class="s" x="425" y="98" text-anchor="middle">(proof the agent holds the key)</text>
+<rect class="b" x="590" y="20" width="260" height="56" rx="8"/><text x="720" y="44" text-anchor="middle">Known host, same key</text><text class="s" x="720" y="62" text-anchor="middle">reply: its state (no change)</text>
+<rect class="b" x="590" y="90" width="260" height="56" rx="8"/><text x="720" y="114" text-anchor="middle">Known host, other key</text><text class="s" x="720" y="132" text-anchor="middle">key_mismatch until an admin deletes it</text>
+<rect class="b" x="590" y="160" width="260" height="56" rx="8"/><text x="720" y="184" text-anchor="middle">New host</text><text class="s" x="720" y="202" text-anchor="middle">pending, or approved by the token</text>
+<rect class="k" x="300" y="160" width="250" height="56" rx="8"/><text x="425" y="184" text-anchor="middle">admin.php: Approve</text><text class="s" x="425" y="202" text-anchor="middle">after the fingerprint check</text>
+<path class="a" d="M260,65 L298,65"/><path class="a" d="M550,50 L588,48"/><path class="a" d="M550,80 C570,85 570,115 588,118"/><path class="a" d="M550,100 C575,120 575,180 588,186"/>
+<path class="a" d="M588,195 L552,192"/>
+<text class="s" x="430" y="252" text-anchor="middle">The agent saves "approved &lt;fingerprint&gt; &lt;server&gt;" and registers again when the key or the server changes,</text>
+<text class="s" x="430" y="268" text-anchor="middle">or when the server answers not_registered, pending, revoked or key_mismatch.</text>
+</svg>
+<figcaption>Figure 2. A computer name is bound to the first key that registers it.</figcaption>
+</figure>
+<ul>
+<li>The agent registers before it sends anything over HTTPS. It posts its host name, a timestamp, a random
+128-bit nonce, its certificate, the enrollment token (empty if none) and an RSA signature over
+<code>register\n&lt;host&gt;\n&lt;time&gt;\n&lt;nonce&gt;\n&lt;SHA-256 hex of the certificate&gt;</code>.</li>
+<li><code>register.php</code> refuses the request unless the host name matches
+<code>^[a-z0-9][a-z0-9_-]{0,62}$</code>, the nonce is 32 hex digits, the time is within
+<code>max_clock_skew_seconds</code> (300 by default) of the server's clock, the certificate's CN is the host name,
+the signature verifies with the certificate's own key, and the nonce has not been used.</li>
+<li>A host name that is already registered with a different key fingerprint is refused with
+<code>key_mismatch</code> (HTTP 409); only an administrator can delete the old registration. A known host with
+the same key only gets its current state back; its saved certificate is not replaced.</li>
+<li><b>Approval:</b> a new computer is saved as <code>pending</code> and waits for an administrator to approve it
+on <code>admin.php</code>. If the site sets an <code>enrollment_token</code> in <code>server.ini</code> and keeps
+<code>auto_approve_with_token = 1</code>, a computer that sends the same token is approved at once; the token is
+compared in constant time (<code>hash_equals</code>), and a wrong token is refused with <code>bad_token</code>.
+A computer that sends no token is registered as pending.</li>
+<li><b>Revoke and delete:</b> a revoked computer stays listed and its uploads are refused. Deleting the
+registration lets the name register again, with any key.</li>
+</ul>
+
+<h2 id="upload">5. Signed uploads</h2>
+<figure class="fc-fig">
+<svg viewBox="0 0 860 250" role="img" aria-label="Upload checks in order: host name and nonce format, time window, host registered and approved, size limit, signature over upload, host, time, nonce and the SHA-256 of the report with the registered certificate, nonce not used before, then the report is written to a temporary file and renamed to the signing host's report name. Any failure gives a STATUS reply and nothing is saved.">
+<rect class="b" x="10" y="20" width="155" height="64" rx="8"/><text x="87" y="48" text-anchor="middle">1. Format</text><text class="s" x="87" y="66" text-anchor="middle">host name, nonce</text>
+<rect class="b" x="180" y="20" width="155" height="64" rx="8"/><text x="257" y="48" text-anchor="middle">2. Time</text><text class="s" x="257" y="66" text-anchor="middle">within 300 s</text>
+<rect class="b" x="350" y="20" width="155" height="64" rx="8"/><text x="427" y="48" text-anchor="middle">3. Approved</text><text class="s" x="427" y="66" text-anchor="middle">registered, not revoked</text>
+<rect class="b" x="520" y="20" width="155" height="64" rx="8"/><text x="597" y="48" text-anchor="middle">4. Size</text><text class="s" x="597" y="66" text-anchor="middle">2 MB by default</text>
+<rect class="k" x="690" y="20" width="160" height="64" rx="8"/><text x="770" y="48" text-anchor="middle">5. Signature</text><text class="s" x="770" y="66" text-anchor="middle">registered certificate</text>
+<rect class="b" x="520" y="130" width="155" height="64" rx="8"/><text x="597" y="158" text-anchor="middle">6. Nonce</text><text class="s" x="597" y="176" text-anchor="middle">never seen before</text>
+<rect class="k" x="690" y="130" width="160" height="64" rx="8"/><text x="770" y="158" text-anchor="middle">7. Save</text><text class="s" x="770" y="176" text-anchor="middle">under the signer's name</text>
+<rect class="b" x="10" y="130" width="420" height="64" rx="8"/><text x="220" y="152" text-anchor="middle">Any failure: STATUS reply, nothing saved</text><text class="s" x="220" y="170" text-anchor="middle">bad_timestamp, not_registered, pending, revoked,</text><text class="s" x="220" y="185" text-anchor="middle">bad_signature, replay</text>
+<path class="a" d="M165,52 L178,52"/><path class="a" d="M335,52 L348,52"/><path class="a" d="M505,52 L518,52"/><path class="a" d="M675,52 L688,52"/>
+<path class="a" d="M770,84 C770,110 640,105 610,128"/><path class="a" d="M675,162 L688,162"/>
+<path class="a" d="M520,162 L432,162"/>
+<text class="s" x="430" y="230" text-anchor="middle">Signed data: "upload" | host | time | nonce | SHA-256 of the report (RSA PKCS#1 v1.5, SHA-256)</text>
+</svg>
+<figcaption>Figure 3. A report is saved only after every check passes.</figcaption>
+</figure>
+<ul>
+<li>Each upload carries the host name, a timestamp, a new random 128-bit nonce, the report and an RSA PKCS#1
+v1.5 SHA-256 signature, made by the key store, over <code>upload\n&lt;host&gt;\n&lt;time&gt;\n&lt;nonce&gt;\n&lt;SHA-256
+hex of the report&gt;</code>. The server checks it with <code>openssl_verify</code> against the certificate saved
+at registration, never against anything in the request.</li>
+<li><b>Replay protection:</b> the nonce is recorded per host, under a file lock, and a nonce that was already
+used is refused with <code>replay</code>. Nonces are kept for twice the clock window, and older requests fail
+the time check anyway, so a captured request cannot be sent again.</li>
+<li><b>Where it is saved:</b> as <code>&lt;host&gt;_windows_report_agent.txt</code> for the host that signed,
+whatever file name was sent, written to a temporary name and renamed, so a reader never sees half a
+report.</li>
+<li><b>Replies</b> are a <code>STATUS:</code> line the agent acts on. When the server says
+<code>not_registered</code>, <code>pending</code>, <code>revoked</code> or <code>key_mismatch</code>, the agent clears
+its saved state and registers again on its next cycle, so it notices a revoke or a deleted registration
+without anyone touching the computer.</li>
+<li><b>Hook uploads</b> (reports from other tools, sent with <code>drra_svc.exe submit</code>) go to
+<code>hook.php</code> with the same checks, signed over <code>hook\n&lt;host&gt;\n&lt;time&gt;\n&lt;nonce&gt;\n&lt;hook
+ID&gt;\n&lt;subject&gt;\n&lt;SHA-256 of the envelope&gt;\n&lt;SHA-256 of the payload&gt;</code>. The server also
+requires a manifest for that hook ID on the server, a subject that is the signing host itself, an envelope
+that matches the request, the manifest's size limit and minimum interval. The payload is parsed once, by
+the manifest's format, into plain text lines for DRSM.</li>
+</ul>
+
+<h2 id="transport">6. Transport and delivery methods</h2>
+<ul>
+<li><b>HTTPS</b> uses WinINet, so the server's certificate is checked by Windows against the computer's
+trusted roots, and TLS versions and cipher suites are Windows' own (Schannel). The agent pins no
+certificate. <code>ignore_cert_revocation=1</code>, the default, skips only the CRL and OCSP revocation check,
+for networks that block revocation servers; set it to <code>0</code> where they can be reached.
+<code>use_https=0</code> sends plain HTTP and is only for a test server: the signature still stops changed or
+forged reports, but the inventory can be read on the network.</li>
+<li><b>File share (CIFS):</b> the service connects as the computer account on a domain, or with a share login
+whose password is kept in <code>cifs_password.dat</code>, encrypted with DPAPI for the computer
+(<code>CRYPTPROTECT_LOCAL_MACHINE</code>). The report is copied under a temporary name and renamed. These copies
+are not signed: who can write is decided by the share and folder permissions. SMB signing and encryption are
+the file server's and Windows' settings.</li>
+<li><b>SCP:</b> the service runs the Windows OpenSSH <code>scp.exe</code> in batch mode with a key file that has
+no passphrase (the service runs unattended), <code>StrictHostKeyChecking=yes</code> by default against its own
+<code>known_hosts</code> file, and a timeout. Not signed either: the SSH account decides who can write.</li>
+<li>DRSM reads report files; it trusts whatever is in its reports folder. Give only the report server or the
+share write access to that folder.</li>
+</ul>
+
+<h2 id="computer">7. On the Windows computer</h2>
+<ul>
+<li>The service runs as LocalSystem, needs no inbound firewall rule and opens no port.</li>
+<li>Setup limits <code>C:\ProgramData\DataReel\ReportingAgent</code> (the report, the log, the certificate, the
+registration state, the share password, the scan results and the hook upload folders) to SYSTEM and
+Administrators, with inheritance removed. Standard users cannot read the inventory, change the registration
+state or queue a hook upload.</li>
+<li>The settings file, <code>drra.ini</code>, is in <code>C:\Program Files\DataReel\ReportingAgent</code>, which only
+administrators can change. Standard users can read it, as they can read the rest of the program folder,
+so it holds the server name and the enrollment token, but never a password (section 11).</li>
+<li>The share password is read from <code>cifs_password.dat</code> only for the connection and wiped from
+memory after use (<code>SecureZeroMemory</code>). <code>set-cifs-password</code> asks for it at a prompt.</li>
+<li>Setup uninstalls the service and programs but keeps the settings and the data folder, so a reinstall
+keeps the same key and does not need to be approved again. Removing the agent completely means deleting
+them by hand.</li>
+<li>The vulnerability scan uses the Windows Update Agent API, the same search Settings &gt; Windows Update
+runs, against Windows Update or the site's WSUS server. It downloads and installs nothing.</li>
+</ul>
+
+<h2 id="server">8. On the report server</h2>
+<ul>
+<li><code>server.ini</code>, the registrations, the nonces, the reports, the hook data and the admin password
+file live in <code>DATA_DIR</code>. <code>install_server.sh</code> puts it outside the web root, or, on shared
+hosting, inside it with a <code>Require all denied</code> <code>.htaccess</code>. The library pages
+(<code>wra_lib.php</code>, <code>wra_page.php</code>, <code>wra_auth.php</code>, <code>hook_lib.php</code>) cannot be
+opened from the web.</li>
+<li>Host names and hook IDs are checked against fixed patterns before they are used in a file name, so a
+request cannot reach another folder.</li>
+<li><code>admin.php</code>, <code>status.php</code> and <code>report.php</code> need a login: Apache Basic
+authentication (with <code>require_remote_user = 1</code> the pages refuse to run without it) or, with
+<code>login = drsm</code>, the DRSM dashboard login and its users and lockouts. Every change on
+<code>admin.php</code> needs a per-session CSRF token, and all output is HTML-escaped.</li>
+<li><code>[status] public = 1</code> lets the status pages run without a login. It is only for the demo with
+sample data.</li>
+<li>Files are written to a temporary name and renamed into place. Registration files are JSON per host.</li>
+</ul>
+
+<h2 id="crypto">9. Cryptography and FIPS</h2>
+<div class="fc-table">
+<table>
+<tr><td><b>Use</b></td><td><b>Algorithm</b></td><td><b>Done by</b></td></tr>
+<tr><td>Computer identity</td><td>RSA 3072, non-exportable machine key</td><td>Microsoft Software Key Storage Provider (CNG)</td></tr>
+<tr><td>Request signatures</td><td>RSA PKCS#1 v1.5 with SHA-256</td><td>CNG on the computer, PHP OpenSSL on the server</td></tr>
+<tr><td>Report and certificate hashes, fingerprint</td><td>SHA-256</td><td>CNG, PHP</td></tr>
+<tr><td>Nonces</td><td>128 random bits</td><td><code>BCryptGenRandom</code>, system generator</td></tr>
+<tr><td>Share password at rest</td><td>DPAPI, machine scope</td><td>Windows</td></tr>
+<tr><td>Transport</td><td>TLS as negotiated by Windows and the web server</td><td>WinINet / Schannel, Apache</td></tr>
+</table>
+</div>
+<p>The agent has no FIPS mode of its own and makes no FIPS claim. Its cryptography is done by Windows CNG and,
+on the server, by PHP's OpenSSL extension; whether those modules run in a validated FIPS mode depends on the
+Windows build and policy and on the server's OpenSSL. Check them with your security office if your site needs
+FIPS 140-3.</p>
+
+<h2 id="data">10. What a report holds</h2>
+<p>A report names the computer, its service tag and asset tag, IP addresses, the user profile folders, every
+installed program and version, the Windows updates and hotfixes, Defender alerts (with threat names and
+file paths), usage counters and the security updates still missing. Together the reports are a map of the
+fleet and its weak spots, so treat the reports folder like any other sensitive inventory: keep the status
+pages behind a login, keep backups private, and give DRSM and other readers access only to what they need.
+The agent sends no passwords, no file contents and no browsing data.</p>
+
+<h2 id="limits">11. Limits, stated plainly</h2>
+<ul>
+<li>An administrator on a computer can make it send any report. The signature proves which computer sent a
+report and that it was not changed on the way, not that its contents are true.</li>
+<li>The enrollment token is a shared secret, and it is in <code>drra.ini</code>, which local users can read. With
+auto-approval on, anyone who has it can register a computer under an unused name. Use admin approval, or turn
+auto-approval off or change the token after a rollout, if that matters to you.</li>
+<li>The first key to register a name wins. A computer that registers before the real one, with the token or an
+approval by mistake, holds that name until an administrator deletes it: check fingerprints before approving.</li>
+<li>File share and SCP deliveries are not signed, and DRSM trusts its reports folder.</li>
+<li>The share password is encrypted for the computer, not for a user: any program running as an administrator or
+SYSTEM on that computer can decrypt it. The folder ACL is what keeps it from standard users.</li>
+<li>The SCP key has no passphrase. Limit the SSH account to the reports folder on the server.</li>
+<li>Revocation checks of the server's TLS certificate are off by default (<code>ignore_cert_revocation=1</code>).</li>
+<li>Reports are saved on the server with mode 644. On a shared host, make sure other accounts cannot read
+<code>DATA_DIR</code>.</li>
+<li>The replay check depends on the clocks: a server whose clock is far off refuses good reports
+(<code>bad_timestamp</code>), and the fix is the clock, not a larger window.</li>
+<li>The agent's own security updates come with new releases; it does not update itself.</li>
+</ul>
+
+<h2 id="quantum">12. Quantum computing</h2>
+<ul>
+<li><b>What is at stake:</b> the agent encrypts nothing itself; its RSA key only signs. A quantum computer
+that can break RSA could forge a computer's signature once it exists, but it could not read anything from
+old signatures. Reports recorded on the network today are protected by TLS, so their privacy against later
+quantum attacks depends on the key exchange that Windows and the web server negotiate.</li>
+<li><b>Quantum-resistant today:</b> SHA-256 (report hashes and fingerprints) and the nonce and time
+checks.</li>
+<li><b>Not quantum-resistant:</b> the RSA signatures, the self-signed certificates and RSA or elliptic-curve TLS
+key exchange.</li>
+<li><b>Moving on:</b> a later release can sign with ML-DSA (NIST FIPS 204) once both the Windows key storage
+provider on the supported Windows versions and the PHP OpenSSL extension on report servers support it, with
+a new registration for each computer. For TLS, enable hybrid ML-KEM key exchange on the web server and in
+Windows when they offer it; the agent uses whatever Windows negotiates. No change to the agent is needed for
+that.</li>
+</ul>
+
+<h2 id="ai">13. AI-assisted use</h2>
+<p>The <a href="https://datareel.com/windows_reporting_agent/ai_assisted_guide.php">AI-assisted guide</a> (<code>AGENTS.md</code>) keeps
+an AI agent away from every secret on this page: it never reads the enrollment token, a share password, an
+SCP key, <code>server.ini</code> or the admin passwords, never suggests exporting the machine key or weakening a
+check, and never approves a computer without the fingerprint check. People run or approve every step.</p>
+
+<h2 id="report">14. Reporting a security issue</h2>
+<p>Report security issues privately through the <a href="https://datareel.com/contact.php">contact page</a>, not in public issue
+trackers. Fixes go into the next release; the <a href="changelog.html">change
+log</a> lists every release and what changed.</p>
+
+
+</article>
+</body>
+</html>

@@ -31,6 +31,7 @@ a browser. It is also at <https://datareel.com/windows_reporting_agent/>.
 - [Vulnerability scan](#vulnerability-scan)
 - [Hook uploads](#hook-uploads)
 - [Security](#security)
+- [AI-assisted install, upgrade and support](#ai-assisted-install-upgrade-and-support)
 - [The fleet status page](#the-fleet-status-page) (and DRSM)
 - [Building from source](#building-from-source)
 - [Command line tools](#command-line-tools)
@@ -481,6 +482,37 @@ PLUGINS.md.
   changes, but only TLS keeps the inventory private on the network.
 - **Admin page:** protected by web server authentication and a CSRF token.
   All output is escaped.
+
+The security design white paper, `docs/security_design.html` (also at
+<https://datareel.com/windows_reporting_agent/security_design.php>),
+describes the trust between the parts, every server check, the delivery
+methods, the cryptography, quantum computing and the limits, with
+diagrams.
+
+## AI-assisted install, upgrade and support
+
+`AGENTS.md` lets an AI agent (Gemini CLI reads it through `GEMINI.md`,
+Claude Code through `CLAUDE.md`, other agents read it directly) assist
+your own administrators and developers to set up the report server,
+install and approve computers, upgrade, connect DRSM, build and
+troubleshoot. It is also at
+<https://datareel.com/windows_reporting_agent/ai_assisted_guide.php>.
+
+- Before any AI assistance, review your agency's or company's AI usage
+  policies and get formal written approval from your management team.
+  Use only approved enterprise AI models: the agent may see computer
+  names, user names, IP addresses, installed programs, missing updates
+  and logs. Public or free AI tools, open source and self-built models
+  may expose that information. The entire risk of AI-assisted use rests
+  with the user. Naming an AI tool is a reference only, not an
+  endorsement.
+- Human in the loop, never autonomous: the agent prints each command,
+  and people run it or approve it one step at a time. No auto-approve
+  modes, no unattended runs; rollouts stay with your deployment tools.
+- The agent never sees the enrollment token, a share password, an SCP
+  key, an admin password or `server.ini`, never suggests exporting the
+  machine key, and never approves a computer before its fingerprint is
+  checked.
 
 ## The fleet status page
 

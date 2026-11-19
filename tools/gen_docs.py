@@ -6,6 +6,7 @@ import os, sys
 OUT = sys.argv[1]
 DL = "https://datareel.com/downloads/windows_reporting_agent/"
 DEMO = "https://datareel.com/windows_reporting_agent/demo/"
+AI_GUIDE = "https://datareel.com/windows_reporting_agent/ai_assisted_guide.php"
 
 ICON_MENU = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>'
 ICON_DEMO = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>'
@@ -54,6 +55,7 @@ def page(fname, title, desc, toc, body):
     side.append("<h4>Links</h4>")
     if DEMO:
         side.append('<a href="%s">Live demo</a>' % DEMO)
+    side.append('<a href="security_design.html">Security design (white paper)</a><a href="%s">AI-assisted guide</a>' % AI_GUIDE)
     side.append('<a href="%s">Downloads</a><a href="https://datareel.com/contact.php">Report an issue</a>' % DL)
 
     i = ORDER.index(fname)
@@ -208,6 +210,8 @@ page("index.html", "Overview",
   <li><code>README.md</code>, the full install and configuration guide</li>
   <li><code>drra.ini</code>, every agent setting with comments</li>
   <li><code>php/server.ini.example</code>, every server setting with comments</li>
+  <li><a href="security_design.html">Security design</a> (<code>docs/security_design.html</code>), the white paper: the machine key, registration and approval, signed uploads, the server checks, the delivery methods, cryptography, quantum computing and the limits</li>
+  <li><code>AGENTS.md</code> (with <code>CLAUDE.md</code> and <code>GEMINI.md</code>), the <a href="https://datareel.com/windows_reporting_agent/ai_assisted_guide.php">AI-assisted guide</a>: how an approved enterprise AI agent assists your administrators with the server, installs, approvals, upgrades and support, with people running or approving every step</li>
 </ul>
 """)
 
@@ -596,7 +600,7 @@ page("security.html", "Security",
      [("identity", "Agent identity"), ("register", "Registration"), ("upload", "Signed uploads"), ("computer", "On the computer"), ("server", "On the server"), ("limits", "Limits")],
      """
 <h1>Security</h1>
-<p class="lead">The report server only keeps reports that an approved computer signed with its own key. This page describes how, and what it does not cover.</p>
+<p class="lead">The report server only keeps reports that an approved computer signed with its own key. This page describes how, and what it does not cover. The <a href="security_design.html">security design white paper</a> goes further: trust between the parts, every server check, the delivery methods, cryptography, quantum computing and the limits, with diagrams.</p>
 
 <h2 id="identity">Agent identity</h2>
 <p>On its first run the agent creates a 3072-bit RSA key in the Microsoft Software Key Storage Provider as a machine key named <code>DataReelReportAgent</code>, marked not exportable, and a self-signed certificate for it with <code>CN=&lt;hostname&gt;</code>, saved as <code>agent_cert.pem</code> in <code>data_dir</code>. The key fingerprint shown in the log and on the admin page is the SHA-256 of the DER public key (SubjectPublicKeyInfo).</p>
@@ -720,10 +724,16 @@ page("troubleshooting.html", "Troubleshooting",
 # ---------------------------------------------------------------- changelog
 page("changelog.html", "What's new",
      "DataReel Reporting Agent for Windows release history.",
-     [("v35", "Release 3.5"), ("v34", "Release 3.4"), ("v33b2", "Release 3.3 beta 2"), ("v33", "Release 3.3 beta 1")],
+     [("v36", "Release 3.6 (next)"), ("v35", "Release 3.5"), ("v34", "Release 3.4"), ("v33b2", "Release 3.3 beta 2"), ("v33", "Release 3.3 beta 1")],
      """
 <h1>What's new</h1>
 <p class="lead">Release 3.4 is the first stable release of the DataReel Reporting Agent for Windows, for Windows 11, Windows Server 2022 and Windows Server 2025. It has everything from the 3.3 betas: release 3.3 beta 2 added hook uploads, and release 3.3 beta 1 was the first public release.</p>
+
+<h2 id="v36">Release 3.6 <span class="badge new">Next release</span></h2>
+<ul>
+  <li><strong>AI-assisted guide:</strong> <code>AGENTS.md</code>, with <code>CLAUDE.md</code> and <code>GEMINI.md</code>, lets an approved enterprise AI agent assist your administrators with the report server, installs, approvals, upgrades, DRSM, building and troubleshooting. Human in the loop, never autonomous: people run or approve every step, and the agent never sees the enrollment token, a password, a key or <code>server.ini</code>. Also at <a href="https://datareel.com/windows_reporting_agent/ai_assisted_guide.php">datareel.com</a>.</li>
+  <li><strong>Security design white paper:</strong> <a href="security_design.html">security_design.html</a>, also at <a href="https://datareel.com/windows_reporting_agent/security_design.php">datareel.com</a>.</li>
+</ul>
 
 <h2 id="v35">Release 3.5 <span class="badge new">November 2026</span></h2>
 <ul>
