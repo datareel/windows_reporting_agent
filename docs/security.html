@@ -46,7 +46,7 @@
 <ul>
   <li>The service runs as LocalSystem. The private key never leaves the key store.</li>
   <li>The installer limits <code>C:\ProgramData\DataReel\ReportingAgent</code> (report, log, certificate, registration state) to SYSTEM and Administrators, so standard users cannot read the inventory or tamper with the agent state.</li>
-  <li>The settings file is in <code>C:\Program Files\DataReel\ReportingAgent</code>, which only administrators can change.</li>
+  <li>The settings file is in <code>C:\Program Files\DataReel\ReportingAgent</code>, which only administrators can change. It holds the enrollment token, so from release 3.6 setup also limits <code>drra.ini</code> itself to SYSTEM and Administrators; standard users can no longer read it.</li>
   <li>A file share password is stored encrypted with DPAPI for the computer in <code>cifs_password.dat</code> in the same protected folder, never in the settings file.</li>
 </ul>
 

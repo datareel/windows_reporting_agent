@@ -32,6 +32,7 @@
 <h2 id="v36">Release 3.6 <span class="badge new">Next release</span></h2>
 <ul>
   <li><strong>AI-assisted guide:</strong> <code>AGENTS.md</code>, with <code>CLAUDE.md</code> and <code>GEMINI.md</code>, lets an approved enterprise AI agent assist your administrators with the report server, installs, approvals, upgrades, DRSM, building and troubleshooting. Human in the loop, never autonomous: people run or approve every step, and the agent never sees the enrollment token, a password, a key or <code>server.ini</code>. Also at <a href="https://datareel.com/windows_reporting_agent/ai_assisted_guide.php">datareel.com</a>.</li>
+  <li><strong>Settings file readable only by administrators:</strong> <code>drra.ini</code> holds the enrollment token, so setup now limits it to SYSTEM and Administrators (it was readable by every local user, like the rest of the program folder). Upgrades apply the change too. Edit it from an administrator editor.</li>
   <li><strong>Security design white paper:</strong> <a href="security_design.html">security_design.html</a>, also at <a href="https://datareel.com/windows_reporting_agent/security_design.php">datareel.com</a>.</li>
 </ul>
 

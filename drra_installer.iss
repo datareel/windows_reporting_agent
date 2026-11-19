@@ -96,6 +96,8 @@ Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Services\EventLog\Application\{#Sv
 [Run]
 ; Only SYSTEM and Administrators may read or change the agent data (S-1-5-18, S-1-5-32-544)
 Filename: "{sys}\icacls.exe"; Parameters: """{#DataDir}"" /inheritance:r /grant:r *S-1-5-18:(OI)(CI)F *S-1-5-32-544:(OI)(CI)F"; Flags: runhidden; StatusMsg: "Securing the agent data folder..."
+; drra.ini holds the enrollment token: only SYSTEM and Administrators may read it (3.6)
+Filename: "{sys}\icacls.exe"; Parameters: """{app}\drra.ini"" /inheritance:r /grant:r *S-1-5-18:F *S-1-5-32-544:F"; Flags: runhidden; StatusMsg: "Securing the settings file..."
 ; Create the service, or update it on an upgrade
 Filename: "{sys}\sc.exe"; Parameters: "create {#SvcName} start= auto binPath= ""\""{app}\drra_svc.exe\"""" DisplayName= ""{#AppTitle}"""; Flags: runhidden; Check: not ServiceExists; StatusMsg: "Installing the service..."
 Filename: "{sys}\sc.exe"; Parameters: "config {#SvcName} start= auto binPath= ""\""{app}\drra_svc.exe\"""" DisplayName= ""{#AppTitle}"""; Flags: runhidden; Check: ServiceExists

@@ -478,6 +478,8 @@ PLUGINS.md.
 - **On the computer:** the installer limits
   `C:\ProgramData\DataReel\ReportingAgent` to SYSTEM and Administrators, so
   users cannot read the reports or change the registration state.
+  From 3.6 it also limits `drra.ini`, which holds the enrollment token,
+  to SYSTEM and Administrators.
 - **Transport:** use HTTPS. The signature protects the report from
   changes, but only TLS keeps the inventory private on the network.
 - **Admin page:** protected by web server authentication and a CSRF token.
