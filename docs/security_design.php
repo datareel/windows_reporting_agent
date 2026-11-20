@@ -30,7 +30,7 @@
 </style>
 <article class="dr2-doc">
 
-<p><b>Release:</b> 3.5, with the report server pages of the same release. <b>Audience:</b> security
+<p><b>Release:</b> 3.6, with the report server pages of the same release. <b>Audience:</b> security
 reviewers, administrators and anyone deciding whether to run the agent on their computers or trust the
 reports it sends. The source code is published, so everything on this page can be checked against it; the
 design does not depend on keeping it secret. The <a href="/windows_reporting_agent/index.php">documentation</a>
