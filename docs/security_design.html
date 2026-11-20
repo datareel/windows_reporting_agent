@@ -239,8 +239,9 @@ registration state, the share password, the scan results and the hook upload fol
 Administrators, with inheritance removed. Standard users cannot read the inventory, change the registration
 state or queue a hook upload.</li>
 <li>The settings file, <code>drra.ini</code>, is in <code>C:\Program Files\DataReel\ReportingAgent</code>, which only
-administrators can change. Standard users can read it, as they can read the rest of the program folder,
-so it holds the server name and the enrollment token, but never a password (section 11).</li>
+administrators can change. It holds the server name and the enrollment token, but never a password. Up to
+release 3.5 standard users could read it, like the rest of the program folder; from release 3.6 setup limits
+<code>drra.ini</code> itself to SYSTEM and Administrators on every install and upgrade (section 11).</li>
 <li>The share password is read from <code>cifs_password.dat</code> only for the connection and wiped from
 memory after use (<code>SecureZeroMemory</code>). <code>set-cifs-password</code> asks for it at a prompt.</li>
 <li>Setup uninstalls the service and programs but keeps the settings and the data folder, so a reinstall
@@ -297,7 +298,8 @@ The agent sends no passwords, no file contents and no browsing data.</p>
 <ul>
 <li>An administrator on a computer can make it send any report. The signature proves which computer sent a
 report and that it was not changed on the way, not that its contents are true.</li>
-<li>The enrollment token is a shared secret, and it is in <code>drra.ini</code>, which local users can read. With
+<li>The enrollment token is a shared secret, kept in <code>drra.ini</code>, which local users can read on releases before
+3.6 (3.6 limits it to administrators; upgrade, or run <code>icacls</code> on it the same way). With
 auto-approval on, anyone who has it can register a computer under an unused name. Use admin approval, or turn
 auto-approval off or change the token after a rollout, if that matters to you.</li>
 <li>The first key to register a name wins. A computer that registers before the real one, with the token or an
