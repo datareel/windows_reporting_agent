@@ -201,7 +201,7 @@ type "C:\ProgramData\DataReel\ReportingAgent\drra.log"
 findstr /b "VERSION:" "C:\ProgramData\DataReel\ReportingAgent\*_windows_report_agent.txt"
 "C:\Program Files\DataReel\ReportingAgent\drra_svc.exe" uploads
 "C:\Program Files\DataReel\ReportingAgent\drra_svc.exe" scan --no-send
-powershell "(Get-Item 'C:\Program Files\DataReel\ReportingAgent\drra_svc.exe').VersionInfo.FileVersion"
+powershell "(Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' | ? DisplayName -like '*DataReel*Reporting*').DisplayVersion"
 ```
 
 `scan --no-send` asks Windows Update for the updates not installed yet
@@ -339,7 +339,7 @@ README "Installing the agent" and `docs/install.html`.
    `DATA_DIR` (dry run, then `--apply`); it keeps `server.ini` and the
    login. Add new `server.ini` sections from `server.ini.example` by hand.
 3. **One test computer:** run the new setup over the old one
-   (`/VERYSILENT` keeps every setting). Check the file version, `sc
+   (`/VERYSILENT` keeps every setting). Check the installed version (DisplayVersion, section 2), `sc
    query`, `drra.log` (`Upload successful`, no new registration) and the
    `VERSION:` line of the next report.
 4. **DRSM:** update the `windows/*` plugins (DRSM release, or
@@ -396,7 +396,7 @@ cause and the fix (rule 3).
 | --- | --- |
 | Service state | `sc query DataReelReportAgent`, Application event log source `DataReelReportAgent` |
 | Last delivery result | `C:\ProgramData\DataReel\ReportingAgent\drra.log` |
-| Agent version | `VERSION:` line of the report, file version of `drra_svc.exe` |
+| Agent version | `VERSION:` line of the report, installed DisplayVersion (section 2) |
 | Registration state | `registration_status.txt` (state, key fingerprint, server) and `admin.php` |
 | Settings | `drra.ini` (the person reads out the setting names asked for; `enrollment_token` is a secret) |
 | Hook uploads | `drra_svc.exe uploads`, the UPLOADS section of the report |
