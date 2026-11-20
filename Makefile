@@ -74,7 +74,7 @@ installer: all
 # The programs, message DLL, default settings and docs in a zip file, for
 # installs without setup.exe (see build.txt). Keep VERSION in step with
 # AGENT_VERSION in common.h and AppVersion in drra_installer.iss.
-VERSION = 3.5
+VERSION = 3.6
 BINZIP  = output\drra_$(VERSION)_bin_x64.zip
 
 binzip: all

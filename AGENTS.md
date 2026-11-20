@@ -8,9 +8,8 @@ Windows (DRRA): the `DataReelReportAgent` Windows service
 It tells an AI agent (Gemini CLI, Claude Code, GitHub Copilot, Codex and
 others) how to assist a site's own administrators and developers to set
 up the report server, install the agent on Windows computers, approve
-them, upgrade older releases to the current release, 3.5, build it from
-source, maintain a fork, and troubleshoot (3.6, next: this guide and the
-security design white paper in the documentation set). The agent
+them, upgrade older releases to the current release, 3.6, build it from
+source, maintain a fork, and troubleshoot. The agent
 assists; it does not replace the administrators or DataReel support, and
 it never acts autonomously (section 0). The people review and approve
 every step, and problems the agent cannot solve go to DataReel (section
@@ -308,13 +307,18 @@ README "Installing the agent" and `docs/install.html`.
    permissions and the SSH account control who can write.
 5. Only after the test computer works: the site's own rollout (section 0).
 
-## 6. AI-assisted upgrade to 3.5
+## 6. AI-assisted upgrade to 3.6
 
 ### 6.1 What changes, and what does not
 
 - **Kept by setup:** `drra.ini`, the agent key, `agent_cert.pem`, the
   registration state and the share password, so an upgraded computer
   does not need to be approved again. New settings take their defaults.
+- **3.6:** setup limits `drra.ini` (it holds the enrollment token) to
+  SYSTEM and Administrators on every install and upgrade, so standard
+  users can no longer read it; edit it from an administrator editor. This
+  guide and the security design white paper are in the release. No change
+  to the report format or the server pages.
 - **3.5:** vulnerability scan (`drra_svc.exe scan`, `[scan] enabled=0`
   by default, VULNERABILITIES section); DRSM needs the
   `windows/vulnerabilities` plugin for it.
